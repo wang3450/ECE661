@@ -182,41 +182,53 @@ def homogenizePoints(H, key):
     return newPoint
 
 if __name__ == "__main__":
-    '''Data Loading: ie load the PQRS points and image files'''
-    X_prime = getCardPoints(int(sys.argv[1]))                   # X_prime is a 4x2 ndarray of PQRS points on the cards
-    X = np.array([[29,22], [29,509], [725,509], [725,22]])      # X is a 4x2 ndarray of ROI on the rb18
-    card_image = getCardImage(int(sys.argv[1]))                 # card_image stores the cv2 image pointer of the cardImage
-    car_image = cv2.imread('car.jpg', cv2.IMREAD_UNCHANGED)     # car_image stores the cv2 image pointer of the rb18
+    '''Data Loader: Load X and X_prime coordinates 
+    as well as the respective pictures. 
+    X corresponds to card1
+    X_prime corresponds to card2'''
+    X_image = getCardImage(1)
+    X_PQRS = getCardPoints(1)
+    X_prime_PQRS = getCardPoints(2)
 
-    '''Computation of Homography'''
-    H = computeHomography(X, X_prime)
-    np.set_printoptions(suppress=True)
-    print(H)
 
-    '''
-    -Get a dict of points that make up the ROI and plot it
-    -Apply Homography to the points and store them in HOMO_ROI dict'''
-    ROI = getROI(car_image, X)
-    ROI_image = np.ones((1000, 1000, 3), dtype=np.uint8)
+    '''Compute Homography Between card1 and card2'''
+    H1 = computeHomography(X_PQRS, X_prime_PQRS)
+
+    '''Data Loader:'''
+    X_PQRS = getCardPoints(2)
+    X_prime_PQRS = getCardPoints(3)
+
+    '''Compute Homography Between card2 and card3'''
+    H2 = computeHomography(X_PQRS, X_prime_PQRS)
+
+    '''Find the Product Between H1 and H2'''
+    H_Final = np.dot(H2,H1)
+
+    '''Get All Points In Card1'''
+    ROI = {}
     HOMO_ROI = {}
+    count = 0
+    ROI_image = np.ones((1500, 1500, 3), dtype=np.uint8)
+    for y in range(X_image.shape[0]):
+        for x in range(X_image.shape[1]):
+            ROI[(y,x)] = X_image[y,x]
+
+    '''Perform Homography on ROI'''
     for key in ROI:
-        ROI_image[key] = ROI[key]
-        HOMO_KEY = homogenizePoints(H, key)
+        # ROI_image[key] = ROI[key]
+        HOMO_KEY = homogenizePoints(H_Final, key)
         HOMO_ROI[HOMO_KEY] = ROI[key]
 
-    '''Plot the new homogenous coordinates on the card!'''
     for key in HOMO_ROI:
         try:
-            card_image[key] = HOMO_ROI[key]
+            ROI_image[key] = HOMO_ROI[key]
         except(IndexError):
             pass
 
-    '''Write the image to the file'''
-    filename = 'card{num}_car.jpeg'.format(num=sys.argv[1])
-    cv2.imwrite(filename,card_image)
+
 
     '''display image test code'''
-    # cv2.imshow("test Car Image", card_image)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cv2.imshow("test Car Image", ROI_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
