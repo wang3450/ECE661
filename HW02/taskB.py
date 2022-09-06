@@ -225,7 +225,9 @@ if __name__ == "__main__":
         except(IndexError):
             pass
 
-
+    '''Write the image to the file'''
+    filename = 'card3_reconstruction.jpeg'
+    cv2.imwrite(filename, ROI_image)
 
     '''display image test code'''
     cv2.imshow("test Car Image", ROI_image)

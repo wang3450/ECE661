@@ -202,6 +202,7 @@ if __name__ == "__main__":
     for key in ROI:
         ROI_image[key] = ROI[key]
         HOMO_KEY = homogenizePoints(H, key)
+        print(key)
         HOMO_ROI[HOMO_KEY] = ROI[key]
 
     '''Plot the new homogenous coordinates on the card!'''
