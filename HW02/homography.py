@@ -182,6 +182,26 @@ def getROI(img, PQRS):
             ROI[(i,j)] = img[i,j]
     return ROI
 
+
+'''homogenizePoints
+Input: H (3x3), key = unhomogenized point, ROI[key] = color
+Ouput: HOMO_KEY = new point, HOMO_COLOR = color
+Purpose: homogenizePoints calculates the new points to transform'''
+def homogenizePoints(H, key):
+    x_list = list()
+    for i in key:
+        x_list.append([i])
+    x_list.append([1])
+
+    temp = copy.deepcopy(x_list[0])
+    x_list[0] = x_list[1]
+    x_list[1] = temp
+    x_prime = np.dot(H,np.array(x_list))
+    newPoint = (int(x_prime[1]/x_prime[2]), int(x_prime[0]/x_prime[2]))
+
+    return newPoint
+
+
 if __name__ == "__main__":
     '''Execute: python3 homography.py <card/custom> <1/2/3>'''
     if len(sys.argv) != 3:
@@ -200,10 +220,27 @@ if __name__ == "__main__":
     np.set_printoptions(suppress=True)
     print(f'H: {H}')
 
-    X_ROI = getROI(X_image, X_PQRS)
 
-    # cv2.imshow("X_prime_image", X_prime_image)
+    X_ROI = getROI(X_image, X_PQRS)
+    X_prime_ROI = {}
+    for point in X_ROI:
+        newPoint = homogenizePoints(H, point)
+        X_prime_ROI[newPoint] = X_ROI[point]
+
+    for point in X_prime_ROI:
+        try:
+            X_prime_image[point] = X_prime_ROI[point]
+        except IndexError:
+            pass
+
+    if whichSet == 'card':
+        filename = f'card{imageNum}_car.jpeg'
+    elif whichSet == 'custom':
+        filename = f'tv{imageNum}_w13.jpeg'
+    cv2.imwrite(filename, X_prime_image)
+
     # cv2.imshow("X_image", X_image)
+    # cv2.imshow("X__prime_image", X_prime_image)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
 
