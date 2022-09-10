@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 import sys
 import copy
+from tqdm import tqdm
+import math
+
 
 '''loadImages
 input: imageSet (str), imageNum (int)
@@ -22,10 +25,12 @@ purpose: given the imageSet and imageNum return PQRS points for both distorted a
 def loadPoints(imageSet: str, imageNum: int):
     if imageSet == 'given':
         if imageNum == 1:
-            P = [0, 0]
-            Q = [0, 9]
-            R = [3, 9]
-            S = [3, 0]
+            t = 100;
+            c = 10;
+            P = [0 * c + t, 0 * c + t]
+            Q = [0 * c + t, 9 * c + t]
+            R = [3 * c + t, 9 * c + t]
+            S = [3 * c + t, 0 * c + t]
 
             P_prime = [241, 201]
             Q_prime = [235, 368]
@@ -163,9 +168,69 @@ def homogenizePoints(H, key):
     x_list[0] = x_list[1]
     x_list[1] = temp
     x_prime = np.dot(H,np.array(x_list))
-    newPoint = (int(x_prime[1]/x_prime[2]), int(x_prime[0]/x_prime[2]))
+    x1 = float(x_prime[1])
+    x2 = float(x_prime[0])
+    x3 = float(x_prime[2])
 
+    newPoint = (x1/x3, x2/x3)
+    # newPoint = (y,x)
     return newPoint
+
+
+'''interpolatePixels
+Input: single point and its rgb value
+Output: pixel value
+Purpose: Given a point where each dim is a float, compute its pixel value'''
+def interpolatePixels(homoPoint, image):
+    if homoPoint[0].is_integer() and homoPoint[1].is_integer():
+        return (image[int(homoPoint[0]), (int(homoPoint[1]))])
+
+    else:
+        try:
+            x_prime = homoPoint[1]
+            y_prime = homoPoint[0]
+
+            p1 = (math.floor(y_prime), math.floor(x_prime))
+            p2 = (math.ceil(y_prime), math.floor(x_prime))
+            p3 = (math.ceil(y_prime), math.ceil(x_prime))
+            p4 = (math.floor(y_prime), math.ceil(x_prime))
+
+            d1 = getDistance(homoPoint, p1)
+            d2 = getDistance(homoPoint, p2)
+            d3 = getDistance(homoPoint, p3)
+            d4 = getDistance(homoPoint, p4)
+
+            pv1 = image[p1]
+            pv2 = image[p2]
+            pv3 = image[p3]
+            pv4 = image[p4]
+
+
+            denom = d1 + d2 + d3 + d4
+
+            d1_pv1 = [pv1[0] * d1, pv1[1] * d1, pv1[2] * d1]
+            d2_pv2 = [pv2[0] * d2, pv2[1] * d2, pv2[2] * d2]
+
+            d3_pv3 = [pv3[0] * d3, pv3[1] * d3, pv3[2] * d3]
+            d4_pv4 = [pv4[0] * d4, pv4[1] * d4, pv4[2] * d4]
+
+            numer = [d1_pv1[0] + d2_pv2[0] + d3_pv3[0] + d4_pv4[0], d1_pv1[1] + d2_pv2[1] + d3_pv3[1] + d4_pv4[1], d1_pv1[2] + d2_pv2[2] + d3_pv3[2] + d4_pv4[2]]
+
+            return (int(numer[0] / denom), int(numer[1] / denom), int(numer[2] / denom))
+        except IndexError:
+            return (0,0,0)
+
+'''getDistance
+Input: 2 points
+Output: Euclidean Distance
+Purpose: Used in interpolatePixels'''
+def getDistance(p1, p2):
+    x1 = p1[0]
+    y1 = p1[1]
+    x2 = p2[0]
+    y2 = p2[1]
+
+    return math.sqrt(math.pow(x1-x2,2) + math.pow(y1-y2,2))
 
 
 if __name__ == "__main__":
@@ -186,29 +251,30 @@ if __name__ == "__main__":
 
 
     '''Estimate Homography H'''
-    H = np.linalg.inv(computeHomography(X_PQRS, X_prime_PQRS))
+    H = (computeHomography(X_PQRS, X_prime_PQRS))
+    H_inverse = np.linalg.inv(H)
+    print(H)
+
+
 
     '''Map New Points'''
-    test = {}
-    pt = list()
-    undistorted_image = np.zeros((1000, 1000, 3), dtype=np.uint8)
-    for y in range(distorted_image.shape[0]):
-        for x in range(distorted_image.shape[1]):
-            color = distorted_image[y,x];
-            newPoint = homogenizePoints(H, (y,x))
-            test[newPoint] = color
-            pt.append(newPoint)
+    undistorted_image = np.ones((distorted_image.shape[0], distorted_image.shape[1], 3), dtype=np.uint8)
+    for y in range(undistorted_image.shape[0]):
+        for x in range(undistorted_image.shape[1]):
+            try:
+                HOMO_point = homogenizePoints(H, (y,x))
+                color = interpolatePixels(HOMO_point, distorted_image)
+                undistorted_image[y,x] = color
+                print(f'(X,Y) = ({HOMO_point[1]},{HOMO_point[0]})')
+                print(f'(X,Y) = ({x},{y})')
+                print(f'color = {color}')
+                print("\n")
+            except IndexError:
+                undistorted_image[y, x] = [0,0,0]
 
-
-    newTest = list()
-    for i in pt:
-        if i not in newTest:
-            newTest.append(i)
-    print(len(newTest))
-
-
+    # cv2.imwrite("rectified_building.jpg", undistorted_image)
 
     '''display code'''
-    # cv2.imshow("test bb", undistorted_image)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cv2.imshow("test bb", undistorted_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()

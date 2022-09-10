@@ -233,6 +233,7 @@ if __name__ == "__main__":
         except IndexError:
             pass
 
+    '''Write the image data'''
     if whichSet == 'card':
         filename = f'card{imageNum}_car.jpeg'
     elif whichSet == 'custom':
