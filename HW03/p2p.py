@@ -27,6 +27,7 @@ def loadPoints(imageSet: str, imageNum: int):
         if imageNum == 1:
             t = 100;
             c = 10;
+
             P = [0 * c + t, 0 * c + t]
             Q = [0 * c + t, 9 * c + t]
             R = [3 * c + t, 9 * c + t]
@@ -39,10 +40,13 @@ def loadPoints(imageSet: str, imageNum: int):
 
             return np.array([P, Q, R, S]), np.array([P_prime, Q_prime, R_prime, S_prime])
         elif imageNum == 2:
-            P = [0, 0]
-            Q = [0, 150]
-            R = [150, 85]
-            S = [150, 0]
+            t = 100
+            c = 5
+
+            P = [0 * c + t, 0 * c + t]
+            Q = [0 * c + t, 85 * c + t]
+            R = [150 * c + t, 85 * c + t]
+            S = [150 * c + t, 0 * c + t]
 
             P_prime = [76, 180]
             Q_prime = [78, 654]
@@ -272,7 +276,7 @@ if __name__ == "__main__":
             except IndexError:
                 undistorted_image[y, x] = [0,0,0]
 
-    # cv2.imwrite("rectified_building.jpg", undistorted_image)
+    cv2.imwrite("rectified_nighthawks.jpg", undistorted_image)
 
     '''display code'''
     cv2.imshow("test bb", undistorted_image)
