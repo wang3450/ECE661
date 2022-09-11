@@ -25,35 +25,20 @@ purpose: given the imageSet and imageNum return PQRS points for both distorted a
 def loadPoints(imageSet: str, imageNum: int):
     if imageSet == 'given':
         if imageNum == 1:
-            t = 100;
-            c = 10;
+            p1 = [240, 122,1]
+            p2 = [717, 290,1]
 
-            P = [0 * c + t, 0 * c + t]
-            Q = [0 * c + t, 9 * c + t]
-            R = [3 * c + t, 9 * c + t]
-            S = [3 * c + t, 0 * c + t]
+            p3 = [240, 193,1]
+            p4 = [719, 325,1]
 
-            P_prime = [241, 201]
-            Q_prime = [235, 368]
-            R_prime = [295, 373]
-            S_prime = [297, 216]
+            p5 = [156, 462,1]
+            p6 = [167, 154,1]
 
-            return np.array([P, Q, R, S]), np.array([P_prime, Q_prime, R_prime, S_prime])
-        elif imageNum == 2:
-            t = 100
-            c = 5
+            p7 = [104, 459,1]
+            p8 = [112, 217,1]
 
-            P = [0 * c + t, 0 * c + t]
-            Q = [0 * c + t, 85 * c + t]
-            R = [150 * c + t, 85 * c + t]
-            S = [150 * c + t, 0 * c + t]
+            return p1, p2, p3, p4, p5, p6, p7, p8
 
-            P_prime = [76, 180]
-            Q_prime = [78, 654]
-            R_prime = [805, 621]
-            S_prime = [803, 220]
-
-            return np.array([P, Q, R, S]), np.array([P_prime, Q_prime, R_prime, S_prime])
 
 
 '''drawBoundingBox
@@ -245,39 +230,63 @@ if __name__ == "__main__":
     '''data loaders:
     -imageSet (str): which set to load {given, custom}
     -imageNum (int): which image from set {1,2}
-    -distortedImage (cv2): distorted image
-    -X_PQRS (ndarray): PQRS points in undistorted
-    -X_prime_PQRS (ndarray): PQRS points in distorted'''
+    -distortedImage (cv2): distorted image'''
     imageSet = sys.argv[1];
     imageNum = int(sys.argv[2])
     distorted_image = loadImage(imageSet, imageNum)
-    X_PQRS, X_prime_PQRS = loadPoints(imageSet, imageNum)
+    p1, p2, p3, p4, p5, p6, p7, p8 = loadPoints(imageSet, imageNum)
+    x1 = np.array(p1)
+    x2 = np.array(p2)
+    x3 = np.array(p3)
+    x4 = np.array(p4)
+    x5 = np.array(p5)
+    x6 = np.array(p6)
+    x7 = np.array(p7)
+    x8 = np.array(p8)
 
+    l1 = np.cross(x1,x2)
+    l2 = np.cross(x3,x4)
+    l3 = np.cross(x5,x6)
+    l4 = np.cross(x7,x8)
+
+    vp1 = np.cross(l1,l2)
+    vp1 = vp1 / vp1[2]
+    vp2 = np.cross(l3,l4)
+    vp2 = vp2 / vp2[2]
+
+    vl = np.cross(vp1, vp2)
+    vl = vl / vl[2]
+
+
+
+    H = np.zeros((3,3))
+    H[0][0] = 1
+    H[1][1] = 1
+    H[2] = vl
+
+    print(H)
+
+    H_inverse = np.linalg.inv(H)
 
     '''Estimate Homography H'''
-    H = (computeHomography(X_PQRS, X_prime_PQRS))
-    H_inverse = np.linalg.inv(H)
-    np.set_printoptions(suppress=True)
-    print(H)
 
 
 
     '''Map New Points'''
     undistorted_image = np.ones((distorted_image.shape[0], distorted_image.shape[1], 3), dtype=np.uint8)
     for y in range(undistorted_image.shape[0]):
-        for x in range(undistorted_image.shape[1]):
-            try:
-                HOMO_point = homogenizePoints(H, (y,x))
-                color = interpolatePixels(HOMO_point, distorted_image)
-                undistorted_image[y,x] = color
-                # print(f'(X,Y) = ({HOMO_point[1]},{HOMO_point[0]})')
-                # print(f'(X,Y) = ({x},{y})')
-                # print(f'color = {color}')
-                # print("\n")
-            except IndexError:
-                undistorted_image[y, x] = [0,0,0]
+         for x in range(undistorted_image.shape[1]):
+             try:
+                 HOMO_point = homogenizePoints(H, (y,x))
+                 color = interpolatePixels(HOMO_point, distorted_image)
+                 undistorted_image[y,x] = color
+                 # print(f'(X,Y) = ({HOMO_point[1]},{HOMO_point[0]})')
+                 # print(f'(X,Y) = ({x},{y})')
+                 # print(f'color = {color}')
+                 # print("\n")
+             except IndexError:
+                 undistorted_image[y, x] = [0,0,0]
 
-    #cv2.imwrite("rectified_nighthawks.jpg", undistorted_image)
 
     '''display code'''
     cv2.imshow("test bb", undistorted_image)
