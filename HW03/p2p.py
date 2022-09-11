@@ -253,16 +253,13 @@ if __name__ == "__main__":
     distorted_image = loadImage(imageSet, imageNum)
     X_PQRS, X_prime_PQRS = loadPoints(imageSet, imageNum)
 
-
     '''Estimate Homography H'''
     H = (computeHomography(X_PQRS, X_prime_PQRS))
     H_inverse = np.linalg.inv(H)
     np.set_printoptions(suppress=True)
     print(H)
 
-
-
-    '''Map New Points'''
+    '''Map New Points with the estimated homography'''
     undistorted_image = np.ones((distorted_image.shape[0], distorted_image.shape[1], 3), dtype=np.uint8)
     for y in range(undistorted_image.shape[0]):
         for x in range(undistorted_image.shape[1]):
@@ -270,16 +267,13 @@ if __name__ == "__main__":
                 HOMO_point = homogenizePoints(H, (y,x))
                 color = interpolatePixels(HOMO_point, distorted_image)
                 undistorted_image[y,x] = color
-                # print(f'(X,Y) = ({HOMO_point[1]},{HOMO_point[0]})')
-                # print(f'(X,Y) = ({x},{y})')
-                # print(f'color = {color}')
-                # print("\n")
             except IndexError:
                 undistorted_image[y, x] = [0,0,0]
-
-    #cv2.imwrite("rectified_nighthawks.jpg", undistorted_image)
 
     '''display code'''
     cv2.imshow("test bb", undistorted_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+    '''Write Image to File'''
+    # cv2.imwrite("proj_rect_building.jpg", undistorted_image)
