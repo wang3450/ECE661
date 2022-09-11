@@ -39,6 +39,21 @@ def loadPoints(imageSet: str, imageNum: int):
 
             return p1, p2, p3, p4, p5, p6, p7, p8
 
+        elif imageNum == 2:
+            p1 = [74, 177, 1]
+            p2 = [77, 654, 1]
+
+            p3 = [805, 217, 1]
+            p4 = [806, 622, 1]
+
+            p5 = [77, 655, 1]
+            p6 = [805, 622, 1]
+
+            p7 = [74, 177, 1]
+            p8 = [804, 218, 1]
+
+            return p1, p2, p3, p4, p5, p6, p7, p8
+
 
 
 '''drawBoundingBox
@@ -53,92 +68,37 @@ def drawBoundingBox(PQRS, img):
     return img
 
 
-'''computeHomography
-Input: 2 4x2 ndarray
+'''computeProjHomography
+Input: 8 lists of length 2 ndarray
 Output: 3x3 ndarray
-Purpose: Given X and X_prime, compute H'''
-def computeHomography(X, X_prime):
-    ''' ax = b
-    a = 8x8 matrix
-    b = 8x1 matrix X_prime
-    x = 8x1 matrix homography '''
-    a = np.zeros((8, 8))
-    b_list = list()
-    for i in X_prime:
-        b_list.append([i[0]])
-        b_list.append([i[1]])
-    b = np.array(b_list)
-    H = np.zeros((3,3))
+Purpose: Given 8 points, compute H'''
+def computeProjHomography(p1, p2, p3, p4, p5, p6, p7, p8):
+    x1 = np.array(p1)
+    x2 = np.array(p2)
+    x3 = np.array(p3)
+    x4 = np.array(p4)
+    x5 = np.array(p5)
+    x6 = np.array(p6)
+    x7 = np.array(p7)
+    x8 = np.array(p8)
 
-    '''Row 1'''
-    a[0][0] = X[0][0]
-    a[0][1] = X[0][1]
-    a[0][2] = 1
-    a[0][6] = -1 * X[0][0] * X_prime[0][0]
-    a[0][7] = -1 * X[0][1] * X_prime[0][0]
+    l1 = np.cross(x1, x2)
+    l2 = np.cross(x3, x4)
+    l3 = np.cross(x5, x6)
+    l4 = np.cross(x7, x8)
 
-    '''Row 2'''
-    a[1][3] = X[0][0]
-    a[1][4] = X[0][1]
-    a[1][5] = 1
-    a[1][6] = -1 * X[0][0] * X_prime[0][1]
-    a[1][7] = -1 * X[0][1] * X_prime[0][1]
+    vp1 = np.cross(l1, l2)
+    vp1 = vp1 / vp1[2]
+    vp2 = np.cross(l3, l4)
+    vp2 = vp2 / vp2[2]
 
-    '''Row 3'''
-    a[2][0] = X[1][0]
-    a[2][1] = X[1][1]
-    a[2][2] = 1
-    a[2][6] = -1 * X[1][0] * X_prime[1][0]
-    a[2][7] = -1 * X[1][1] * X_prime[1][0]
+    vl = np.cross(vp1, vp2)
+    vl = vl / vl[2]
 
-    '''Row 4'''
-    a[3][3] = X[1][0]
-    a[3][4] = X[1][1]
-    a[3][5] = 1
-    a[3][6] = -1 * X[1][0] * X_prime[1][1]
-    a[3][7] = -1 * X[1][1] * X_prime[1][1]
-
-    '''Row 5'''
-    a[4][0] = X[2][0]
-    a[4][1] = X[2][1]
-    a[4][2] = 1
-    a[4][6] = -1 * X[2][0] * X_prime[2][0]
-    a[4][7] = -1 * X[2][1] * X_prime[2][0]
-
-    '''Row 6'''
-    a[5][3] = X[2][0]
-    a[5][4] = X[2][1]
-    a[5][5] = 1
-    a[5][6] = -1 * X[2][0] * X_prime[2][1]
-    a[5][7] = -1 * X[2][1] * X_prime[2][1]
-
-    '''Row 7'''
-    a[6][0] = X[3][0]
-    a[6][1] = X[3][1]
-    a[6][2] = 1
-    a[6][6] = -1 * X[3][0] * X_prime[3][0]
-    a[6][7] = -1 * X[3][1] * X_prime[3][0]
-
-    '''Row 8'''
-    a[7][3] = X[3][0]
-    a[7][4] = X[3][1]
-    a[7][5] = 1
-    a[7][6] = -1 * X[3][0] * X_prime[3][1]
-    a[7][7] = -1 * X[3][1] * X_prime[3][1]
-
-    x = np.dot(np.linalg.inv(a), b)
-
-    H[0][0] = x[0]
-    H[0][1] = x[1]
-    H[0][2] = x[2]
-    H[1][0] = x[3]
-    H[1][1] = x[4]
-    H[1][2] = x[5]
-    H[2][0] = x[6]
-    H[2][1] = x[7]
-    H[2][2] = 1
-
-    # np.set_printoptions(suppress=True)
+    H = np.zeros((3, 3))
+    H[0][0] = 1
+    H[1][1] = 1
+    H[2] = vl
 
     return H
 
@@ -230,65 +190,46 @@ if __name__ == "__main__":
     '''data loaders:
     -imageSet (str): which set to load {given, custom}
     -imageNum (int): which image from set {1,2}
-    -distortedImage (cv2): distorted image'''
+    -distortedImage (cv2): distorted image
+    -p1-p8 (list): 8 points which help identify vanishing line'''
     imageSet = sys.argv[1];
     imageNum = int(sys.argv[2])
     distorted_image = loadImage(imageSet, imageNum)
     p1, p2, p3, p4, p5, p6, p7, p8 = loadPoints(imageSet, imageNum)
-    x1 = np.array(p1)
-    x2 = np.array(p2)
-    x3 = np.array(p3)
-    x4 = np.array(p4)
-    x5 = np.array(p5)
-    x6 = np.array(p6)
-    x7 = np.array(p7)
-    x8 = np.array(p8)
-
-    l1 = np.cross(x1,x2)
-    l2 = np.cross(x3,x4)
-    l3 = np.cross(x5,x6)
-    l4 = np.cross(x7,x8)
-
-    vp1 = np.cross(l1,l2)
-    vp1 = vp1 / vp1[2]
-    vp2 = np.cross(l3,l4)
-    vp2 = vp2 / vp2[2]
-
-    vl = np.cross(vp1, vp2)
-    vl = vl / vl[2]
 
 
-
-    H = np.zeros((3,3))
-    H[0][0] = 1
-    H[1][1] = 1
-    H[2] = vl
-
-    print(H)
-
-    H_inverse = np.linalg.inv(H)
-
-    '''Estimate Homography H'''
-
+    '''Estimate Projective Homography projH'''
+    projH = computeProjHomography(p1, p2, p3, p4, p5, p6, p7, p8)
+    if imageSet == 'given':
+        if imageNum == 1:
+            projH[2] = projH[2] * 5
+        elif imageNum == 2:
+            projH[2] = projH[2] * 2
+    projH_inverse = np.linalg.inv(projH)
 
 
     '''Map New Points'''
     undistorted_image = np.ones((distorted_image.shape[0], distorted_image.shape[1], 3), dtype=np.uint8)
-    for y in range(undistorted_image.shape[0]):
-         for x in range(undistorted_image.shape[1]):
+    copy_distorted = copy.deepcopy(distorted_image)
+    for y in range(distorted_image.shape[0]):
+         for x in range(distorted_image.shape[1]):
              try:
-                 HOMO_point = homogenizePoints(H, (y,x))
-                 color = interpolatePixels(HOMO_point, distorted_image)
-                 undistorted_image[y,x] = color
+                 HOMO_point = homogenizePoints(projH_inverse, (y,x))
+                 color = interpolatePixels(HOMO_point, copy_distorted)
+                 distorted_image[y,x] = color
                  # print(f'(X,Y) = ({HOMO_point[1]},{HOMO_point[0]})')
                  # print(f'(X,Y) = ({x},{y})')
                  # print(f'color = {color}')
                  # print("\n")
              except IndexError:
-                 undistorted_image[y, x] = [0,0,0]
+                 distorted_image[y, x] = [0,0,0]
 
 
     '''display code'''
-    cv2.imshow("test bb", undistorted_image)
+    cv2.imshow("fin", distorted_image)
+    cv2.imshow("input", copy_distorted)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+    '''Write Image to File'''
+    # cv2.imwrite("proj_rect_building.jpg", undistorted_image)
