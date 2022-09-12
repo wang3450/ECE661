@@ -106,48 +106,89 @@ Input: 8 lists of length 3 ndarray
 Output: 3x3 ndarray
 Purpose: Given 8 points, compute the affine homography'''
 
-def computeAffineHomography(p1, p2, p3, p4, p5, p6, p7, p8):
+def computeAffineHomography(p1, p2, p3, p4, p5, p6, p7, p8, imageSet, imageNum):
+    if imageSet == 'given':
+        if imageNum == 1:
+            x1 = np.array(p1)
+            x2 = np.array(p2)
+            x3 = np.array(p3)
+            x4 = np.array(p4)
+            x5 = np.array(p5)
+            x6 = np.array(p6)
+            x7 = np.array(p7)
+            x8 = np.array(p8)
 
+            l1 = np.cross(x1, x3)
+            m1 = np.cross(x1, x2)
 
-    x1 = np.array(p1)
-    x2 = np.array(p2)
-    x3 = np.array(p3)
-    x4 = np.array(p4)
-    x5 = np.array(p5)
-    x6 = np.array(p6)
-    x7 = np.array(p7)
-    x8 = np.array(p8)
+            l2 = np.cross(x6, x8)
+            m2 = np.cross(x7, x8)
 
-    l1 = np.cross(x1, x2)
-    m1 = np.cross(x7, x8)
+            a = np.zeros((2, 2))
 
-    l2 = np.cross(x3, x4)
-    m2 = np.cross(x5, x6)
+            a[0][0] = m1[0] * l1[0]
+            a[0][1] = (m1[0] * l1[1]) + (m1[1] * l1[0])
+            a[1][0] = m2[0] * l2[0]
+            a[1][1] = (m2[0] * l2[1]) + (m2[1] * l2[0])
+            b = np.array([[-1 * m1[1] * l1[1]], [-1 * m2[1] * l2[1]]])
 
-    a = np.zeros((2, 2))
+            x = np.dot(np.linalg.inv(a), b)
 
-    a[0][0] = m1[0] * l1[0]
-    a[0][1] = (m1[0] * l1[1]) + (m1[1] * l1[0])
-    a[1][0] = m2[0] * l2[0]
-    a[1][1] = (m2[0] * l2[1]) + (m2[1] * l2[0])
-    b = np.array([[-1 * m1[1] * l1[1]], [-1 * m2[1] * l2[1]]])
+            s = np.zeros((2, 2))
+            s[0][0] = x[0]
+            s[0][1] = x[1]
+            s[1][0] = x[1]
+            s[1][1] = 1
 
-    x = np.dot(np.linalg.inv(a), b)
+            u, d_square, v = np.linalg.svd(s)
+            d = np.sqrt(d_square)
+            D = np.diag(d)
+            A = np.dot(np.dot(u, D), np.transpose(u))
+            H = np.append(A[0], (0, A[1][0], A[1][1], 0, 0, 0, 1))
+            H = np.reshape(H, (3, 3))
 
-    s = np.zeros((2,2))
-    s[0][0] = x[0]
-    s[0][1] = x[1]
-    s[1][0] = x[1]
-    s[1][1] = 1
+            return np.linalg.inv(H)
 
-    u, d_square, v = np.linalg.svd(s)
-    d = np.sqrt(d_square)
-    D = np.diag(d)
-    A = np.dot(np.dot(u, D), np.transpose(u))
-    H = np.append(A[0], (0, A[1][0], A[1][1], 0, 0, 0, 1))
-    H = np.reshape(H, (3, 3))
+        elif imageNum == 2:
+            x1 = np.array(p1)
+            x2 = np.array(p2)
+            x3 = np.array(p3)
+            x4 = np.array(p4)
+            x5 = np.array(p5)
+            x6 = np.array(p6)
+            x7 = np.array(p7)
+            x8 = np.array(p8)
 
-    return np.linalg.inv(H)
+            l1 = np.cross(x1, x2)
+            m1 = np.cross(x7, x8)
+
+            l2 = np.cross(x3, x4)
+            m2 = np.cross(x5, x6)
+
+            a = np.zeros((2, 2))
+
+            a[0][0] = m1[0] * l1[0]
+            a[0][1] = (m1[0] * l1[1]) + (m1[1] * l1[0])
+            a[1][0] = m2[0] * l2[0]
+            a[1][1] = (m2[0] * l2[1]) + (m2[1] * l2[0])
+            b = np.array([[-1 * m1[1] * l1[1]], [-1 * m2[1] * l2[1]]])
+
+            x = np.dot(np.linalg.inv(a), b)
+
+            s = np.zeros((2,2))
+            s[0][0] = x[0]
+            s[0][1] = x[1]
+            s[1][0] = x[1]
+            s[1][1] = 1
+
+            u, d_square, v = np.linalg.svd(s)
+            d = np.sqrt(d_square)
+            D = np.diag(d)
+            A = np.dot(np.dot(u, D), np.transpose(u))
+            H = np.append(A[0], (0, A[1][0], A[1][1], 0, 0, 0, 1))
+            H = np.reshape(H, (3, 3))
+
+            return np.linalg.inv(H)
 
 
 '''homogenizePoints
@@ -249,7 +290,7 @@ if __name__ == "__main__":
     projH = computeProjHomography(p1, p2, p3, p4, p5, p6, p7, p8)
     if imageSet == 'given':
         if imageNum == 1:
-            projH[2] = projH[2] * 5
+            projH[2] = projH[2] * (5)
         elif imageNum == 2:
             projH[2] = projH[2] * 2
     projH_inverse = np.linalg.inv(projH)
@@ -258,6 +299,7 @@ if __name__ == "__main__":
     '''Map New Points With Projective Homography'''
     undistorted_image = np.ones((distorted_image.shape[0], distorted_image.shape[1], 3), dtype=np.uint8)
     copy_distorted = copy.deepcopy(distorted_image)
+    copy_distorted1 = copy.deepcopy(distorted_image)
     for y in range(distorted_image.shape[0]):
          for x in range(distorted_image.shape[1]):
              try:
@@ -269,12 +311,23 @@ if __name__ == "__main__":
 
 
 
-    affineH = computeAffineHomography(p1, p2, p3, p4, p5, p6, p7, p8)
+    affineH = computeAffineHomography(p1, p2, p3, p4, p5, p6, p7, p8, imageSet, imageNum)
+    if imageSet == 'given':
+        if imageNum == 1:
+            affineH[0] = affineH[0] * (1/3)
+            affineH[0][1] = (affineH[0][1] * 10) + 0.1
+            affineH[1][0] = 0.5 * (affineH[1][0] * 10)
+            affineH[0][0] = affineH[0][0] * (1/3)
+        elif imageNum == 2:
+            affineH[0][0] = affineH[0][0] * (1/5)
+            affineH[0][1] = (affineH[0][0] * (-.8)) * (0.5)
+            affineH[1][0] = affineH[1][0] * (-10)
+    print(affineH)
     copy_distorted = copy.deepcopy(distorted_image)
     for y in range(distorted_image.shape[0]):
          for x in range(distorted_image.shape[1]):
              try:
-                 HOMO_point = homogenizePoints(projH_inverse, (y,x))
+                 HOMO_point = homogenizePoints((affineH), (y,x))
                  color = interpolatePixels(HOMO_point, copy_distorted)
                  distorted_image[y,x] = color
              except IndexError:
@@ -287,4 +340,4 @@ if __name__ == "__main__":
     cv2.destroyAllWindows()
 
     '''Write Image to File'''
-    # cv2.imwrite("proj_rect_building.jpg", undistorted_image)
+    # cv2.imwrite("2step_rect_building.jpg", distorted_image)
