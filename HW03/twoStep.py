@@ -32,11 +32,16 @@ def loadPoints(imageSet: str, imageNum: int):
             p3 = [240, 193,1]
             p4 = [719, 325,1]
 
-            p5 = [156, 462,1]
-            p6 = [167, 154,1]
 
-            p7 = [104, 459,1]
-            p8 = [112, 217,1]
+            p5 = p3
+            p6 = p4
+            # p5 = [156, 462,1]
+            # p6 = [167, 154,1]
+
+            p7 = [232, 376,1]
+            p8 = [721, 410, 1]
+            #p7 = [104, 459,1]
+            #p8 = [112, 217,1]
 
             return p1, p2, p3, p4, p5, p6, p7, p8
 
@@ -339,7 +344,7 @@ if __name__ == "__main__":
 
     '''display code'''
     # cv2.imshow("fin", distorted_image)
-    cv2.imshow("fin", final_image)
+    cv2.imshow("fin", image_after_proj)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
