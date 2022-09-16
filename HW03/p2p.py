@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import sys
 import copy
-from tqdm import tqdm
 import math
 
 
@@ -25,8 +24,8 @@ purpose: given the imageSet and imageNum return PQRS points for both distorted a
 def loadPoints(imageSet: str, imageNum: int):
     if imageSet == 'given':
         if imageNum == 1:
-            t = 100;
-            c = 10;
+            t = 100
+            c = 10
 
             P = [0 * c + t, 0 * c + t]
             Q = [0 * c + t, 9 * c + t]
