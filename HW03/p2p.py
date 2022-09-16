@@ -3,7 +3,7 @@ import numpy as np
 import sys
 import copy
 import math
-
+from homogenizeImage import homogenizeImage
 
 '''loadImages
 input: imageSet (str), imageNum (int)
@@ -15,6 +15,11 @@ def loadImage(imageSet: str, imageNum: int)-> np.ndarray:
             return cv2.imread('building.jpg', cv2.IMREAD_UNCHANGED)
         elif imageNum == 2:
             return cv2.imread('nighthawks.jpg', cv2.IMREAD_UNCHANGED)
+    elif imageSet == 'custom':
+        if imageNum == 1:
+            return cv2.imread('custom1.jpg', cv2.IMREAD_UNCHANGED)
+        elif imageNum == 2:
+            return cv2.imread('custom2.jpg', cv2.IMREAD_UNCHANGED)
 
 
 '''loadPoints
@@ -51,6 +56,38 @@ def loadPoints(imageSet: str, imageNum: int):
             Q_prime = [78, 654]
             R_prime = [805, 621]
             S_prime = [803, 220]
+
+            return np.array([P, Q, R, S]), np.array([P_prime, Q_prime, R_prime, S_prime])
+    if imageSet == 'custom':
+        if imageNum == 1:
+            t = 100
+            c = 200
+
+            P = [0 * c + t, 0 * c + t]
+            Q = [0 * c + t, 10 * c + t]
+            R = [10 * c + t, 10 * c + t]
+            S = [10 * c + t, 0 * c + t]
+
+
+            P_prime = [475, 133]
+            Q_prime = [478, 374]
+            R_prime = [652, 386]
+            S_prime = [638, 192]
+
+            return np.array([P, Q, R, S]), np.array([P_prime, Q_prime, R_prime, S_prime])
+        elif imageNum == 2:
+            t = 100
+            c = 200
+
+            P = [0 * c + t, 0 * c + t]
+            Q = [0 * c + t, 5 * c + t]
+            R = [20 * c + t, 5 * c + t]
+            S = [20 * c + t, 0 * c + t]
+
+            P_prime = [163, 323]
+            Q_prime = [163, 409]
+            R_prime = [696, 424]
+            S_prime = [691, 362]
 
             return np.array([P, Q, R, S]), np.array([P_prime, Q_prime, R_prime, S_prime])
 
@@ -269,10 +306,13 @@ if __name__ == "__main__":
             except IndexError:
                 undistorted_image[y, x] = [0,0,0]
 
+    '''Write Image to File'''
+    cv2.imwrite("rectified_custom2.jpg", undistorted_image)
+
     '''display code'''
     cv2.imshow("test bb", undistorted_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-    '''Write Image to File'''
-    # cv2.imwrite("proj_rect_building.jpg", undistorted_image)
+
+
