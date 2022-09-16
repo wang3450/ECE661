@@ -3,7 +3,7 @@ import cv2
 import copy
 import sys
 import math
-from homogenizeImage import homogenizeImage
+
 
 '''loadImages
 input: imageSet (str), imageNum (int)
@@ -131,6 +131,7 @@ def computeHomography(ps1, qr1, pq1, sr1, ps2, qr2, pq2, sr2):
     b[3] = -1
     b[4] = -1
 
+    print(np.linalg.matrix_rank(a))
     x = np.dot(np.linalg.inv(a), b)
     x = x / np.max(x)
 
@@ -269,12 +270,24 @@ if __name__ == "__main__":
 
     '''Compute the Homography and Apply it to the Distorted Image'''
     oneStepH = computeHomography(ps1, qr1, pq1, sr1, ps2, qr2, pq2, sr2 )
-    rectified_image = homogenizeImage(distorted_image, oneStepH)
+    '''Map New Points with the estimated homography'''
+    undistorted_image = np.ones((distorted_image.shape[0], distorted_image.shape[1], 3), dtype=np.uint8)
+    for y in range(undistorted_image.shape[0]):
+        for x in range(undistorted_image.shape[1]):
+            try:
+                HOMO_point = homogenizePoints(H, (y, x))
+                color = interpolatePixels(HOMO_point, distorted_image)
+                undistorted_image[y, x] = color
+            except IndexError:
+                undistorted_image[y, x] = [0, 0, 0]
+
+    '''Write Image to File'''
+    cv2.imwrite("rectified_custom2.jpg", undistorted_image)
 
     '''Write the rectified image to a file'''
-    cv2.imwrite("1step_custom1.jpg", rectified_image)
+    cv2.imwrite("1step_custom1.jpg", undistorted_image)
 
     '''display image to console'''
-    cv2.imshow("custom1.jpg", rectified_image)
+    cv2.imshow("custom1.jpg", undistorted_image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()

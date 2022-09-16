@@ -294,53 +294,48 @@ if __name__ == "__main__":
 
     '''Estimate Projective Homography projH'''
     projH = computeProjHomography(p1, p2, p3, p4, p5, p6, p7, p8)
-    # if imageSet == 'given':
-    #     if imageNum == 1:
-    #         projH[2] = projH[2] * (5)
-    #     elif imageNum == 2:
-    #         projH[2] = projH[2] * 2
     projH_inverse = np.linalg.inv(projH)
 
     image_after_proj = homogenizeImage(distorted_image, projH)
 
 
     '''Map New Points With Projective Homography'''
-    # undistorted_image = np.ones((distorted_image.shape[0], distorted_image.shape[1], 3), dtype=np.uint8)
-    # copy_distorted = copy.deepcopy(distorted_image)
-    # copy_distorted1 = copy.deepcopy(distorted_image)
-    # for y in range(distorted_image.shape[0]):
-    #      for x in range(distorted_image.shape[1]):
-    #          try:
-    #              HOMO_point = homogenizePoints(projH_inverse, (y,x))
-    #              color = interpolatePixels(HOMO_point, copy_distorted)
-    #              distorted_image[y,x] = color
-    #          except IndexError:
-    #              distorted_image[y, x] = [0,0,0]
+    undistorted_image = np.ones((distorted_image.shape[0], distorted_image.shape[1], 3), dtype=np.uint8)
+    copy_distorted = copy.deepcopy(distorted_image)
+    copy_distorted1 = copy.deepcopy(distorted_image)
+    for y in range(distorted_image.shape[0]):
+         for x in range(distorted_image.shape[1]):
+             try:
+                 HOMO_point = homogenizePoints(projH_inverse, (y,x))
+                 color = interpolatePixels(HOMO_point, copy_distorted)
+                 distorted_image[y,x] = color
+             except IndexError:
+                 distorted_image[y, x] = [0,0,0]
 
 
 
     affineH = computeAffineHomography(p1, p2, p3, p4, p5, p6, p7, p8, imageSet, imageNum)
     final_image = homogenizeImage(image_after_proj, affineH)
-    # if imageSet == 'given':
-    #     if imageNum == 1:
-    #         affineH[0] = affineH[0] * (1/3)
-    #         affineH[0][1] = (affineH[0][1] * 10) + 0.1
-    #         affineH[1][0] = 0.5 * (affineH[1][0] * 10)
-    #         affineH[0][0] = affineH[0][0] * (1/3)
-    #     elif imageNum == 2:
-    #         affineH[0][0] = affineH[0][0] * (1/5)
-    #         affineH[0][1] = (affineH[0][0] * (-.8)) * (0.5)
-    #         affineH[1][0] = affineH[1][0] * (-10)
-    # print(affineH)
-    # copy_distorted = copy.deepcopy(distorted_image)
-    # for y in range(distorted_image.shape[0]):
-    #      for x in range(distorted_image.shape[1]):
-    #          try:
-    #              HOMO_point = homogenizePoints((affineH), (y,x))
-    #              color = interpolatePixels(HOMO_point, copy_distorted)
-    #              distorted_image[y,x] = color
-    #          except IndexError:
-    #              distorted_image[y, x] = [0,0,0]
+    if imageSet == 'given':
+        if imageNum == 1:
+            affineH[0] = affineH[0] * (1/3)
+            affineH[0][1] = (affineH[0][1] * 10) + 0.1
+            affineH[1][0] = 0.5 * (affineH[1][0] * 10)
+            affineH[0][0] = affineH[0][0] * (1/3)
+        elif imageNum == 2:
+            affineH[0][0] = affineH[0][0] * (1/5)
+            affineH[0][1] = (affineH[0][0] * (-.8)) * (0.5)
+            affineH[1][0] = affineH[1][0] * (-10)
+    print(affineH)
+    copy_distorted = copy.deepcopy(distorted_image)
+    for y in range(distorted_image.shape[0]):
+         for x in range(distorted_image.shape[1]):
+             try:
+                 HOMO_point = homogenizePoints((affineH), (y,x))
+                 color = interpolatePixels(HOMO_point, copy_distorted)
+                 distorted_image[y,x] = color
+             except IndexError:
+                 distorted_image[y, x] = [0,0,0]
 
     '''display code'''
     # cv2.imshow("fin", distorted_image)
