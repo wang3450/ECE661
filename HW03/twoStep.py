@@ -4,7 +4,7 @@ import sys
 import copy
 from tqdm import tqdm
 import math
-from homogenizeImage import homogenizeImage
+
 
 
 '''loadImages
@@ -296,7 +296,7 @@ if __name__ == "__main__":
     projH = computeProjHomography(p1, p2, p3, p4, p5, p6, p7, p8)
     projH_inverse = np.linalg.inv(projH)
 
-    image_after_proj = homogenizeImage(distorted_image, projH)
+
 
 
     '''Map New Points With Projective Homography'''
@@ -315,18 +315,7 @@ if __name__ == "__main__":
 
 
     affineH = computeAffineHomography(p1, p2, p3, p4, p5, p6, p7, p8, imageSet, imageNum)
-    final_image = homogenizeImage(image_after_proj, affineH)
-    if imageSet == 'given':
-        if imageNum == 1:
-            affineH[0] = affineH[0] * (1/3)
-            affineH[0][1] = (affineH[0][1] * 10) + 0.1
-            affineH[1][0] = 0.5 * (affineH[1][0] * 10)
-            affineH[0][0] = affineH[0][0] * (1/3)
-        elif imageNum == 2:
-            affineH[0][0] = affineH[0][0] * (1/5)
-            affineH[0][1] = (affineH[0][0] * (-.8)) * (0.5)
-            affineH[1][0] = affineH[1][0] * (-10)
-    print(affineH)
+
     copy_distorted = copy.deepcopy(distorted_image)
     for y in range(distorted_image.shape[0]):
          for x in range(distorted_image.shape[1]):

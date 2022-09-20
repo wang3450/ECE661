@@ -3,7 +3,7 @@ import numpy as np
 import sys
 import copy
 import math
-from homogenizeImage import homogenizeImage
+
 
 '''loadImages
 input: imageSet (str), imageNum (int)
@@ -293,6 +293,7 @@ if __name__ == "__main__":
     H = (computeHomography(X_PQRS, X_prime_PQRS))
     H_inverse = np.linalg.inv(H)
     np.set_printoptions(suppress=True)
+
     print(H)
 
     '''Map New Points with the estimated homography'''
@@ -307,7 +308,7 @@ if __name__ == "__main__":
                 undistorted_image[y, x] = [0,0,0]
 
     '''Write Image to File'''
-    cv2.imwrite("rectified_custom2.jpg", undistorted_image)
+    # cv2.imwrite("rectified_custom2.jpg", undistorted_image)
 
     '''display code'''
     cv2.imshow("test bb", undistorted_image)

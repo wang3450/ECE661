@@ -147,11 +147,11 @@ if __name__ == "__main__":
     ps2, qr2, pq2, sr2 = getLines(box1)
 
     projH = computeProjH(ps1, qr1, pq1, sr1, ps2, qr2, pq2, sr2)
-    x = np.linalg.inv(projH)
+    np.printoptions(suppress=True)
+
 
     affineH = computeAffineH(ps1, qr1, pq1, sr1, ps2, qr2, pq2, sr2)
+    print(affineH)
 
-    H = np.dot(projH,np.linalg.inv(affineH))
-    print(H)
 
 
