@@ -4,6 +4,7 @@ import math
 import sys
 from tqdm import tqdm
 from copy import deepcopy
+import random
 
 '''getImage(imageSet:str, imageNum:int) -> tuple
 Input: imageSet (str), imageNum (int)
@@ -11,8 +12,10 @@ Output: raw_image (ndarray), grey_scale_image (ndarray)
 Purpose: given imageSet and imageNum return the proper raw and grey-scaled images'''
 def getImage(imageSet:str) -> tuple:
     if imageSet == "book":
-        raw_input_image1 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/books_1.jpeg", cv2.IMREAD_UNCHANGED)
-        raw_input_image2 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/books_2.jpeg",cv2.IMREAD_UNCHANGED)
+        raw_input_image1 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/books_1.jpeg",
+                                      cv2.IMREAD_UNCHANGED)
+        raw_input_image2 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/books_2.jpeg",
+                                      cv2.IMREAD_UNCHANGED)
 
         h1, w1, _ = raw_input_image1.shape
         raw_input_image2 = cv2.resize(raw_input_image2, (w1,h1), cv2.INTER_AREA)
@@ -21,8 +24,10 @@ def getImage(imageSet:str) -> tuple:
         grey_input_image2 = cv2.cvtColor(raw_input_image2, cv2.COLOR_BGR2GRAY)
         return raw_input_image1, grey_input_image1, raw_input_image2, grey_input_image2
     elif imageSet == "fountain":
-        raw_input_image1 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/fountain_1.jpg", cv2.IMREAD_UNCHANGED)
-        raw_input_image2 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/fountain_2.jpg", cv2.IMREAD_UNCHANGED)
+        raw_input_image1 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/fountain_1.jpg",
+                                      cv2.IMREAD_UNCHANGED)
+        raw_input_image2 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/fountain_2.jpg",
+                                      cv2.IMREAD_UNCHANGED)
 
         h1, w1, _ = raw_input_image1.shape
         raw_input_image2 = cv2.resize(raw_input_image2, (w1, h1), cv2.INTER_AREA)
@@ -30,6 +35,19 @@ def getImage(imageSet:str) -> tuple:
         grey_input_image1 = cv2.cvtColor(raw_input_image1, cv2.COLOR_BGR2GRAY)
         grey_input_image2 = cv2.cvtColor(raw_input_image2, cv2.COLOR_BGR2GRAY)
         return raw_input_image1, grey_input_image1, raw_input_image2, grey_input_image2
+    elif imageSet == "checkerboard":
+        raw_input_image1 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/checkerboard_1.jpg",
+                                      cv2.IMREAD_UNCHANGED)
+        raw_input_image2 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/checkerboard_2.jpg",
+                                      cv2.IMREAD_UNCHANGED)
+
+        h1, w1, _ = raw_input_image1.shape
+        raw_input_image2 = cv2.resize(raw_input_image2, (w1, h1), cv2.INTER_AREA)
+
+        grey_input_image1 = cv2.cvtColor(raw_input_image1, cv2.COLOR_BGR2GRAY)
+        grey_input_image2 = cv2.cvtColor(raw_input_image2, cv2.COLOR_BGR2GRAY)
+        return raw_input_image1, grey_input_image1, raw_input_image2, grey_input_image2
+
 
 '''getHaarFilters(sigma: float) -> tuple
 Input: sigma (float)
@@ -113,9 +131,15 @@ def getDistance(grey_img1, grey_img2, p1, p2, mode):
 
     if mode == 'SSD':
         return np.sum((window2 - window1) ** 2)
+    elif mode == 'NCC':
+        mean1 = np.mean(window1)
+        mean2 = np.mean(window2)
+        numerator = np.sum((window1 - mean1) * (window2 - mean2))
+        denom = np.sqrt((np.sum((window1 - mean1) ** 2) * np.sum((window1 - mean1) ** 2)))
+        return numerator / denom
 
 
-def getPointCorrespondence(img1, img2, Points1, Points2, mode='SSD'):
+def getPointCorrespondence(img1, img2, Points1, Points2, mode='NCC'):
     grey_img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
     grey_img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
     grey_img1 = grey_img1 / 255
@@ -123,6 +147,7 @@ def getPointCorrespondence(img1, img2, Points1, Points2, mode='SSD'):
 
     width = img1.shape[1]
     cat_raw_img = np.concatenate((img1, img2), axis=1)
+    rainbow = [(211, 0, 148), (130, 0, 75), (255, 0, 0), (0, 255, 0), (0, 255, 255), (0, 127, 255), (0, 0, 255)]
 
     for p1 in Points1:
         distanceList = list()
@@ -136,10 +161,12 @@ def getPointCorrespondence(img1, img2, Points1, Points2, mode='SSD'):
         if np.min(distanceList) < 25:
             plotP1 = p1
             plotP2 = (bestPoint[0] + width, bestPoint[1])
-            cv2.circle(cat_raw_img, plotP1, 4, (0, 255, 0), -1)
-            cv2.circle(cat_raw_img, plotP2, 4, (0, 255, 0), -1)
-            cv2.line(cat_raw_img, plotP1, plotP2, (0,255,0), 1)
+            color = random.choice(rainbow)
+            cv2.circle(cat_raw_img, plotP1, 4, color, -1)
+            cv2.circle(cat_raw_img, plotP2, 4, color, -1)
+            cv2.line(cat_raw_img, plotP1, plotP2, color, 1)
 
+    # cv2.imwrite("book_ncc_sigma_0.8.jpg", cat_raw_img)
     cv2.imshow("cast", cat_raw_img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
