@@ -47,6 +47,18 @@ def getImage(imageSet:str) -> tuple:
         grey_input_image1 = cv2.cvtColor(raw_input_image1, cv2.COLOR_BGR2GRAY)
         grey_input_image2 = cv2.cvtColor(raw_input_image2, cv2.COLOR_BGR2GRAY)
         return raw_input_image1, grey_input_image1, raw_input_image2, grey_input_image2
+    elif imageSet == "locker":
+        raw_input_image1 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/locker_1.jpg",
+                                      cv2.IMREAD_UNCHANGED)
+        raw_input_image2 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/locker_2.jpg",
+                                      cv2.IMREAD_UNCHANGED)
+
+        h1, w1, _ = raw_input_image1.shape
+        raw_input_image2 = cv2.resize(raw_input_image2, (w1, h1), cv2.INTER_AREA)
+
+        grey_input_image1 = cv2.cvtColor(raw_input_image1, cv2.COLOR_BGR2GRAY)
+        grey_input_image2 = cv2.cvtColor(raw_input_image2, cv2.COLOR_BGR2GRAY)
+        return raw_input_image1, grey_input_image1, raw_input_image2, grey_input_image2
 
 
 '''getHaarFilters(sigma: float) -> tuple
@@ -139,7 +151,7 @@ def getDistance(grey_img1, grey_img2, p1, p2, mode):
         return numerator / denom
 
 
-def getPointCorrespondence(img1, img2, Points1, Points2, mode='NCC'):
+def getPointCorrespondence(img1, img2, Points1, Points2, mode):
     grey_img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
     grey_img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
     grey_img1 = grey_img1 / 255
@@ -166,16 +178,12 @@ def getPointCorrespondence(img1, img2, Points1, Points2, mode='NCC'):
             cv2.circle(cat_raw_img, plotP2, 4, color, -1)
             cv2.line(cat_raw_img, plotP1, plotP2, color, 1)
 
-    # cv2.imwrite("book_ncc_sigma_0.8.jpg", cat_raw_img)
-    cv2.imshow("cast", cat_raw_img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
+    return cat_raw_img
 
 
 if __name__ == "__main__":
     '''Proper Execution Checker'''
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print("Incorrect Usage")
         print("Try: python3 harris.py <imageSet> <sigma>")
 
@@ -198,11 +206,12 @@ if __name__ == "__main__":
     Points2, pointImage2 = getHarris(raw_input_image2, grey_input_image2, sigma)
 
     '''Perform Point Correspondences'''
-    getPointCorrespondence(copy_raw_input_image1, copy_raw_input_image2, Points1, Points2, mode='SSD')
+    mode = sys.argv[3]
+    cat_img = getPointCorrespondence(copy_raw_input_image1, copy_raw_input_image2, Points1, Points2, mode)
 
     '''display image to console'''
-    # cv2.imshow(f"{imageSet}1", pointImage1)
-    # cv2.imshow(f"{imageSet}2", pointImage2)
+    cv2.imwrite(f"{imageSet}_{mode}_sigma_{sigma}.jpg", cat_img)
+    # cv2.imshow("Concatenated Image", cat_img)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
 

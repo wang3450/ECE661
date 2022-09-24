@@ -43,6 +43,18 @@ def getImage(imageSet:str) -> tuple:
         grey_input_image1 = cv2.cvtColor(raw_input_image1, cv2.COLOR_BGR2GRAY)
         grey_input_image2 = cv2.cvtColor(raw_input_image2, cv2.COLOR_BGR2GRAY)
         return raw_input_image1, grey_input_image1, raw_input_image2, grey_input_image2
+    elif imageSet == "locker":
+        raw_input_image1 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/locker_1.jpg",
+                                      cv2.IMREAD_UNCHANGED)
+        raw_input_image2 = cv2.imread("/Users/wang3450/Desktop/ECE661/HW04/input_images/locker_2.jpg",
+                                      cv2.IMREAD_UNCHANGED)
+
+        h1, w1, _ = raw_input_image1.shape
+        raw_input_image2 = cv2.resize(raw_input_image2, (w1, h1), cv2.INTER_AREA)
+
+        grey_input_image1 = cv2.cvtColor(raw_input_image1, cv2.COLOR_BGR2GRAY)
+        grey_input_image2 = cv2.cvtColor(raw_input_image2, cv2.COLOR_BGR2GRAY)
+        return raw_input_image1, grey_input_image1, raw_input_image2, grey_input_image2
 
 
 
