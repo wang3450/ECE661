@@ -1,0 +1,18 @@
+# (1) clone the git repo (this also has weights)
+git clone https://github.com/magicleap/SuperGluePretrainedNetwork.git
+
+# (2) copy all the contents of zip file into SuperGluePretrainedNetwork folder
+
+# (3) create conda environment
+conda create --name superglue python=3.6
+conda activate superglue
+pip install -r SuperGluePretrainedNetwork/requirements.txt
+
+# (4) sample run using run_ece661.sh
+./run_ece661.sh
+
+# see superglue_ece661.py for usage of superpoint+superglue
+
+## file sizes
+# Git Repo (all code and wts): 238MB
+# sample images: 1.5Mb
