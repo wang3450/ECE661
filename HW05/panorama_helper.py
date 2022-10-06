@@ -20,7 +20,16 @@ def loadImages(imageSet:str)->list:
             input_image_list_raw.append(image)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             input_image_list_grey.append(image)
+    elif imageSet == "custom":
+        for i in range(0,5):
+            image = cv2.imread(f"/Users/wang3450/Desktop/ECE661/HW05/input_images/given_{i}.jpg",cv2.IMREAD_UNCHANGED)
+            image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+            input_image_list_raw.append(image)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            input_image_list_grey.append(image)
     return input_image_list_raw, input_image_list_grey
+
+
 
 
 '''getFeatures(img1, img2)
@@ -378,191 +387,6 @@ def getPanorama(list_best_homography, img_list):
 
 
 
-'''getNewFrame(baseImg, branchImage, H)
-Input: 2 images and the h that relates them
-Output: new frame
-Purpose: Given two images we wish to stitch together, compute the new frame'''
-def getNewFrame(baseImage, branchImage, H):
-    branch_height, branch_width = branchImage.shape[:2]
-    base_height, base_width = baseImage.shape[:2]
-
-    initMatrix = np.array([[0, branch_width-1, branch_width-1, 0],
-                           [0, 0, branch_height-1, branch_height-1],
-                           [1, 1, 1, 1]])
-    [x, y, z] = H@initMatrix
-    x = np.divide(x,z)
-    y = np.divide(y,z)
-
-    x_min = int(round(min(x)))
-    x_max = int(round(max(x)))
-    y_min = int(round(min(y)))
-    y_max = int(round(max(x)))
-
-    new_width = x_max
-    new_height = y_max
-    correction_xy = [0, 0]
-
-    if x_min < 0:
-        new_width = new_width - x_min
-        correction_xy[0] = abs(x_min)
-    if new_width < base_width + correction_xy[0]:
-        new_width = base_width + correction_xy[0]
-    if y_min < 0:
-        new_height = new_height - y_min
-        correction_xy[1] = abs(y_min)
-    if new_height < base_height + correction_xy[1]:
-        new_height = base_height + correction_xy[1]
-
-    x = np.add(x, correction_xy[0])
-    y = np.add(y, correction_xy[1])
-
-    OldInitialPoints = np.float32([[0, 0],
-                                   [branch_width - 1, 0],
-                                   [branch_width - 1, branch_height - 1],
-                                   [0, branch_height - 1]])
-    NewFinalPonts = np.float32(np.array([x, y]).transpose())
-
-    newH = cv2.getPerspectiveTransform(OldInitialPoints, NewFinalPonts)
-
-    return [new_height, new_width], correction_xy, newH
-
-
-'''stitchImage(baseImage, branchImage)
-Input: 2 input images and homography relating them
-Output: stitched image
-Purpose: stitch branchImage onto baseImage using cylinder projection'''
-def stitchImage(baseImage, branchImage):
-    # Applying Cylindrical projection on SecImage
-    branchImage_cylinder, mask_x, mask_y = ProjectOntoCylinder(branchImage)
-
-    # Getting SecImage Mask
-    branchImage_mask = np.zeros(branchImage_cylinder.shape, dtype=np.uint8)
-    branchImage_mask[mask_y, mask_x, :] = 255
-
-    Matches, BaseImage_kp, SecImage_kp = FindMatches(baseImage, branchImage_cylinder)
-    HomographyMatrix, Status = FindHomography(Matches, BaseImage_kp, SecImage_kp)
-
-
-    newFrame, correction, improvedHomography = getNewFrame(baseImage, branchImage, HomographyMatrix)
-
-    SecImage_Transformed = cv2.warpPerspective(branchImage_cylinder, improvedHomography, (newFrame[1], newFrame[0]))
-    SecImage_Transformed_Mask = cv2.warpPerspective(branchImage_mask, improvedHomography, (newFrame[1], newFrame[0]))
-    BaseImage_Transformed = np.zeros((newFrame[0], newFrame[1], 3), dtype=np.uint8)
-    BaseImage_Transformed[correction[1]:correction[1] + baseImage.shape[0], correction[0]:correction[0] + baseImage.shape[1]] = baseImage
-
-    StitchedImage = cv2.bitwise_or(SecImage_Transformed,cv2.bitwise_and(BaseImage_Transformed, cv2.bitwise_not(SecImage_Transformed_Mask)))
-
-    return StitchedImage
-
-
-def Convert_xy(x, y):
-    global center, f
-
-    xt = (f * np.tan((x - center[0]) / f)) + center[0]
-    yt = ((y - center[1]) / np.cos((x - center[0]) / f)) + center[1]
-
-    return xt, yt
-
-
-def ProjectOntoCylinder(InitialImage):
-    global w, h, center, f
-    h, w = InitialImage.shape[:2]
-    center = [w // 2, h // 2]
-    f = 1100  # 1100 field; 1000 Sun; 1500 Rainier; 1050 Helens
-
-    # Creating a blank transformed image
-    TransformedImage = np.zeros(InitialImage.shape, dtype=np.uint8)
-
-    # Storing all coordinates of the transformed image in 2 arrays (x and y coordinates)
-    AllCoordinates_of_ti = np.array([np.array([i, j]) for i in range(w) for j in range(h)])
-    ti_x = AllCoordinates_of_ti[:, 0]
-    ti_y = AllCoordinates_of_ti[:, 1]
-
-    # Finding corresponding coordinates of the transformed image in the initial image
-    ii_x, ii_y = Convert_xy(ti_x, ti_y)
-
-    # Rounding off the coordinate values to get exact pixel values (top-left corner)
-    ii_tl_x = ii_x.astype(int)
-    ii_tl_y = ii_y.astype(int)
-
-    # Finding transformed image points whose corresponding
-    # initial image points lies inside the initial image
-    GoodIndices = (ii_tl_x >= 0) * (ii_tl_x <= (w - 2)) * \
-                  (ii_tl_y >= 0) * (ii_tl_y <= (h - 2))
-
-    # Removing all the outside points from everywhere
-    ti_x = ti_x[GoodIndices]
-    ti_y = ti_y[GoodIndices]
-
-    ii_x = ii_x[GoodIndices]
-    ii_y = ii_y[GoodIndices]
-
-    ii_tl_x = ii_tl_x[GoodIndices]
-    ii_tl_y = ii_tl_y[GoodIndices]
-
-    # Bilinear interpolation
-    dx = ii_x - ii_tl_x
-    dy = ii_y - ii_tl_y
-
-    weight_tl = (1.0 - dx) * (1.0 - dy)
-    weight_tr = (dx) * (1.0 - dy)
-    weight_bl = (1.0 - dx) * (dy)
-    weight_br = (dx) * (dy)
-
-    TransformedImage[ti_y, ti_x, :] = (weight_tl[:, None] * InitialImage[ii_tl_y, ii_tl_x, :]) + \
-                                      (weight_tr[:, None] * InitialImage[ii_tl_y, ii_tl_x + 1, :]) + \
-                                      (weight_bl[:, None] * InitialImage[ii_tl_y + 1, ii_tl_x, :]) + \
-                                      (weight_br[:, None] * InitialImage[ii_tl_y + 1, ii_tl_x + 1, :])
-
-    # Getting x coorinate to remove black region from right and left in the transformed image
-    min_x = min(ti_x)
-
-    # Cropping out the black region from both sides (using symmetricity)
-    TransformedImage = TransformedImage[:, min_x: -min_x, :]
-
-    return TransformedImage, ti_x - min_x, ti_y
-
-
-def FindHomography(Matches, BaseImage_kp, SecImage_kp):
-    # If less than 4 matches found, exit the code.
-    if len(Matches) < 4:
-        print("\nNot enough matches found between the images.\n")
-        exit(0)
-
-    # Storing coordinates of points corresponding to the matches found in both the images
-    BaseImage_pts = []
-    SecImage_pts = []
-    for Match in Matches:
-        BaseImage_pts.append(BaseImage_kp[Match[0].queryIdx].pt)
-        SecImage_pts.append(SecImage_kp[Match[0].trainIdx].pt)
-
-    # Changing the datatype to "float32" for finding homography
-    BaseImage_pts = np.float32(BaseImage_pts)
-    SecImage_pts = np.float32(SecImage_pts)
-
-    # Finding the homography matrix(transformation matrix).
-    (HomographyMatrix, Status) = cv2.findHomography(SecImage_pts, BaseImage_pts, cv2.RANSAC, 4.0)
-
-    return HomographyMatrix, Status
-
-
-def FindMatches(BaseImage, SecImage):
-    # Using SIFT to find the keypoints and decriptors in the images
-    Sift = cv2.SIFT_create()
-    BaseImage_kp, BaseImage_des = Sift.detectAndCompute(cv2.cvtColor(BaseImage, cv2.COLOR_BGR2GRAY), None)
-    SecImage_kp, SecImage_des = Sift.detectAndCompute(cv2.cvtColor(SecImage, cv2.COLOR_BGR2GRAY), None)
-
-    # Using Brute Force matcher to find matches.
-    BF_Matcher = cv2.BFMatcher()
-    InitialMatches = BF_Matcher.knnMatch(BaseImage_des, SecImage_des, k=2)
-
-    # Applytng ratio test and filtering out the good matches.
-    GoodMatches = []
-    for m, n in InitialMatches:
-        if m.distance < 0.75 * n.distance:
-            GoodMatches.append([m])
-
-    return GoodMatches, BaseImage_kp, SecImage_kp
 
 if __name__ == "__main__":
     '''Proper Execution Checker'''
