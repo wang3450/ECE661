@@ -299,6 +299,85 @@ def estimateHomography(correspondences):
     return homography
 
 
+def getValidPoints(pts, Hpts, w, h):
+    xmin = Hpts[:, 0] >= 0
+    Hpts = Hpts[xmin, :]
+    pts = pts[xmin, :]
+
+    xmax = Hpts[:, 0] <= w
+    Hpts = Hpts[xmax, :]
+    pts = pts[xmax, :]
+
+    ymin = Hpts[:, 1] >= 0
+    Hpts = Hpts[ymin, :]
+    pts = pts[ymin, :]
+
+    ymax = Hpts[:, 1] <= h
+    Hpts = Hpts[ymax, :]
+    pts = pts[ymax, :]
+    return pts, Hpts
+
+
+def map_pixel(panorama, img, H):
+    h = img.shape[0]
+    w = img.shape[1]
+
+    h_panorama = panorama.shape[0]
+    w_panorama = panorama.shape[1]
+
+    H = np.linalg.inv(H)
+
+    X,Y = np.meshgrid(np.arange(0, w_panorama, 1), np.arange(0, h_panorama, 1))
+    pts = np.vstack((X.ravel(), Y.ravel())).T
+    pts = np.hstack((pts[:, 0:2], pts[:, 0:1] * 0 + 1))
+
+    Hpts = H@pts.T
+
+    Hpts = Hpts / Hpts[2,:]
+    Hpts = Hpts.T[:, 0:2].astype('int')
+
+    valid_pts, valid_Hpts = getValidPoints(pts, Hpts, w-1, h-1)
+
+    for i in range(valid_pts.shape[0]):
+        if not (panorama[valid_pts[i, 1], valid_pts[i, 0]] != 0).all():
+            panorama[valid_pts[i, 1], valid_pts[i, 0]] = img[valid_Hpts[i, 1], valid_Hpts[i, 0]]
+    return panorama
+
+
+
+'''getPanorama(list_best_homography)'''
+def getPanorama(list_best_homography, img_list):
+    H_to_mid = np.eye(3)
+    for i in range(2, 4):
+        H_to_mid = H_to_mid@np.linalg.inv(list_best_homography[i])
+        list_best_homography[i] = H_to_mid
+    H_to_mid = np.eye(3)
+    for i in range(1, -1, -1):
+        H_to_mid = H_to_mid@list_best_homography[i]
+        list_best_homography[i] = H_to_mid
+
+    list_best_homography.insert(2, np.eye(3))
+    correction = 0
+    for i in range(2):
+        correction += img_list[i].shape[1]
+    H_correction = np.array([[1, 0, correction] ,[0, 1, 0], [0, 0, 1]],dtype=float)
+
+    height = 0
+    width = 0
+    for i in range(5):
+        height = max(height, img_list[i].shape[0])
+        width += img_list[i].shape[1]
+
+    panorama = np.zeros((height, width, 3), np.uint8)
+
+    for i in range(5):
+        H = H_correction@list_best_homography[i]
+        panorama = map_pixel(panorama, img_list[i], H)
+    return panorama
+
+
+
+
 '''getNewFrame(baseImg, branchImage, H)
 Input: 2 images and the h that relates them
 Output: new frame
@@ -351,7 +430,7 @@ def getNewFrame(baseImage, branchImage, H):
 '''stitchImage(baseImage, branchImage)
 Input: 2 input images and homography relating them
 Output: stitched image
-Purpose: stitch branchImage onto baseImage'''
+Purpose: stitch branchImage onto baseImage using cylinder projection'''
 def stitchImage(baseImage, branchImage):
     # Applying Cylindrical projection on SecImage
     branchImage_cylinder, mask_x, mask_y = ProjectOntoCylinder(branchImage)
