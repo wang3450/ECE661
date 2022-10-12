@@ -22,14 +22,12 @@ def loadImages(imageSet:str)->list:
             input_image_list_grey.append(image)
     elif imageSet == "custom":
         for i in range(0,5):
-            image = cv2.imread(f"/Users/wang3450/Desktop/ECE661/HW05/input_images/given_{i}.jpg",cv2.IMREAD_UNCHANGED)
-            image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+            image = cv2.imread(f"/Users/wang3450/Desktop/ECE661/HW05/input_images/custom_{i}.jpg",cv2.IMREAD_UNCHANGED)
+            #image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
             input_image_list_raw.append(image)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             input_image_list_grey.append(image)
     return input_image_list_raw, input_image_list_grey
-
-
 
 
 '''getFeatures(img1, img2)
@@ -308,6 +306,10 @@ def estimateHomography(correspondences):
     return homography
 
 
+'''getValidPoints(pts, Hpts, w, h)
+Input: pts, homogoneized points, width, height
+Output: valid pts and homogenized points
+Purpose: Given a pts and hpts, compute valid versions of both'''
 def getValidPoints(pts, Hpts, w, h):
     xmin = Hpts[:, 0] >= 0
     Hpts = Hpts[xmin, :]
@@ -327,6 +329,10 @@ def getValidPoints(pts, Hpts, w, h):
     return pts, Hpts
 
 
+'''map_pixel(panorama, img, H)
+Input: panorama mask, an image we want to stitch into panorama, homography H
+Output: panorama stitched with img
+Purpose: Given a panorama, img, and h, stitch image onto panorama'''
 def map_pixel(panorama, img, H):
     h = img.shape[0]
     w = img.shape[1]
@@ -353,8 +359,10 @@ def map_pixel(panorama, img, H):
     return panorama
 
 
-
-'''getPanorama(list_best_homography)'''
+'''getPanorama(list_best_homography)
+Input: List of homographies and images
+Output: final panorama
+Purpose: Given list of all images and homographies, stitch images together'''
 def getPanorama(list_best_homography, img_list):
     H_to_mid = np.eye(3)
     for i in range(2, 4):
@@ -385,43 +393,127 @@ def getPanorama(list_best_homography, img_list):
     return panorama
 
 
+'''getJacobian(H, correspondences)
+Input: H and correspondence points
+Output: Jacobian Matrix
+Purpse: Given H and the correspondences from RANSAC, compute Jacobian'''
+def getJacobian(H, correspondences):
+    numPoints = len(correspondences)
+    J = np.zeros((2*numPoints, 9))
+    for i in range(0, len(correspondences)):
+        single_correspondence = correspondences[i]
+        domain_point = single_correspondence[0]
+        x = domain_point[0]
+        y = domain_point[1]
+
+        denom = (H[2][0] * x) + (H[2][1] * y) + H[2][2]
+        num1 = (H[0][0] * x) + (H[0][1] * y) + H[0][2]
+        num2 = (H[1][0] * x) + (H[1][1] * y) + H[1][2]
+
+        J[2*i][0] = np.divide(x, denom)
+        J[2*i][1] = np.divide(y, denom)
+        J[2*i][2] = np.divide(1, denom)
+        J[2*i][6] = np.divide(-1 * x * num1, denom ** 2)
+        J[2*i][7] = np.divide(-1 * y * num1, denom ** 2)
+        J[2*i][8] = np.divide(-1 * num1, denom ** 2)
+
+        J[2*i + 1][3] = np.divide(x, denom)
+        J[2*i + 1][4] = np.divide(y, denom)
+        J[2*i + 1][5] = np.divide(1, denom)
+        J[2*i + 1][6] = np.divide(-1 * x * num2, denom ** 2)
+        J[2*i + 1][7] = np.divide(-1 * y * num2, denom ** 2)
+        J[2*i + 1][8] = np.divide(-1 * num2, denom ** 2)
+
+    return J
+
+
+'''performLM(H, correspondences)
+Input: initial homography, list of correspondences
+Output: refined homography
+Purpose: Given H and a list of valid correspondences, refine H with LM'''
+def performLM(H, correspondences):
+    k = 0
+    k_max = 50
+    v = 2
+    J = getJacobian(H, correspondences)
+    A = J.T@J
+    tau = 0.5
+    rho = -10000000
+
+    x = list()
+    fp = list()
+    p = deepcopy(H.flatten())
+
+    #build x and fp
+    for correspondence in correspondences:
+        domain_pt = correspondence[0]
+        range_pt  = correspondence[1]
+
+        # homogenize the domain points to get fp
+        fp_point = homogenizePoint(H, domain_pt)
+        fp.append(fp_point[0])
+        fp.append(fp_point[1])
+
+        #range points just stay range points
+        x.append(range_pt[0])
+        x.append(range_pt[1])
+
+    x = np.asarray(x, order='F')
+    fp = np.asarray(fp, order='F')
+    assert(x.shape == fp.shape)
+
+    # error associated with "ground truth" from ransac range points
+    # and applying estimated H to domain points
+    error_p = np.subtract(x, fp)
+
+    g = J.T@error_p
+
+    mu = np.max(np.diag(A)) * tau
+
+
+    while(k < k_max):
+        k += 1
+
+        while (rho < 0):
+
+            mu_vector = mu * np.eye(9)
+            a_ui = A + mu_vector
+            delta_p = np.linalg.pinv(a_ui)@g
+            p_new = deepcopy(p) + delta_p
+
+            fp = list()
+            for correspondence in correspondences:
+                domain_pt = correspondence[0]
+                range_pt  = correspondence[1]
+
+                # homogenize the domain points to get fp
+                fp_point = homogenizePoint(np.reshape(p_new, (3,3)), domain_pt)
+                fp.append(fp_point[0])
+                fp.append(fp_point[1])
+
+            fp = np.asarray(fp, order='F')
+
+            rho_num = (np.linalg.norm(error_p) - np.linalg.norm(x - fp))
+            rho_denom = (delta_p.T@(mu*delta_p + g))
+
+            rho = rho_num / rho_denom
+            print(rho)
+            if rho > 0:
+                p = deepcopy(p_new)
+                J = getJacobian(np.reshape(p, (3,3)), correspondences)
+                A = J.T@J
+                error_p = np.subtract(x, fp)
+                mu = mu * np.max([1/3, 1-(2*rho-1) ** 3])
+                v = 2
+            else:
+                mu = mu * v
+                v = v * 2
+    return np.reshape(p, (3,3))
 
 
 
-if __name__ == "__main__":
-    '''Proper Execution Checker'''
-    if len(sys.argv) != 2:
-        print("Incorrect Usage")
-        print("Try: python3 panorama.py <imageSet>")
 
-    '''get the input images'''
-    imageSet = sys.argv[1]
-    input_image_list_raw, input_image_list_grey = loadImages(imageSet)
 
-    '''Build list of Candidate matches between images
-    -each index in the list is one candidate match,
-    i.e. a list of two tuples'''
 
-    '''candidate matches between img0, img1'''
-    candidate_matches_float_01, candidate_matches_int_01 = getCandidateMatches(input_image_list_grey[0], input_image_list_grey[1])
-    assert(len(candidate_matches_float_01) == len(candidate_matches_int_01))
 
-    '''candidate matches between img1, img2'''
-    candidate_matches_float_12, candidate_matches_int_12 = getCandidateMatches(input_image_list_grey[1], input_image_list_grey[2])
-    assert (len(candidate_matches_float_12) == len(candidate_matches_int_12))
 
-    '''candidate matches between img2, img3'''
-    candidate_matches_float_23, candidate_matches_int_23 = getCandidateMatches(input_image_list_grey[2], input_image_list_grey[3])
-    assert (len(candidate_matches_float_23) == len(candidate_matches_int_23))
-
-    '''candidate matches between img3, img4'''
-    candidate_matches_float_34, candidate_matches_int_34 = getCandidateMatches(input_image_list_grey[3], input_image_list_grey[4])
-    assert (len(candidate_matches_float_34) == len(candidate_matches_int_34))
-
-    '''perform RANSAC'''
-    # performRANSAC(candidate_matches_float_01, candidate_matches_int_01)
-    '''Display Image to Console'''
-    # cv2.imshow("0", input_image_list_raw[0])
-    # cv2.imshow("2", input_image_list_raw[1])
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
