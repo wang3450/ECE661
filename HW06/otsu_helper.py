@@ -54,7 +54,7 @@ def minWithinClassVariance(img):
 
 
     _, image_mask = cv2.threshold(img, bestThreshold, 255, cv2.THRESH_BINARY_INV)
-
+    print(f"best threshold:{bestThreshold}")
     return image_mask
 
 
