@@ -1,8 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import csv
-from multiprocessing import pool
+from BitVector import *
 import os
 import cv2
 
@@ -107,3 +106,98 @@ def loadImages(dir_path):
             except AssertionError:
                 pass
     return img_list, label_list
+
+
+'''loadImages
+Input: file directory
+Output: 2 lists
+Purpose: read all train and test images'''
+def loadGrayImages(dir_path):
+    img_list = list()
+    label_list = list()
+    for filename in os.listdir(dir_path):
+        filepath = os.path.join(dir_path, filename)
+        if os.path.isfile(filepath) and ('.jpg' in filepath or '.jpeg' in filepath):
+            img = cv2.imread(filepath, 0)
+            resize_img = cv2.resize(img, (64, 64), cv2.INTER_AREA)
+            resize_img = np.pad(resize_img, 1)
+            assert(resize_img.shape == (66, 66))
+            img_label = -1
+            if 'cloudy' in filename:
+                img_label = 0
+            elif 'rain' in filename:
+                img_label = 1
+            elif 'shine' in filename:
+                img_label = 2
+            elif 'sunrise' in filename:
+                img_label = 3
+            try:
+                assert (img_label >= 0)
+                img_list.append(resize_img)
+                label_list.append(img_label)
+            except AssertionError:
+                pass
+    return img_list, label_list
+
+
+'''lbp_encode
+Input: grey scale image
+Output: histogram of lbp encodings
+Purpose: Given an image, extract the lbp feature descriptor'''
+def lbp_encode(img):
+    encoded_image = np.zeros((64,64))
+    lbp_hist = {t:0 for t in range(10)}
+    k = 0.707
+    l = 0.707
+    img = np.transpose(img, (1,0))
+    for x in range(1, img.shape[0] - 1):
+        for y in range(1, img.shape[0]-1):
+            p0 = img[x,y+1]
+            p2 = img[x+1,y]
+            p4 = img[x,y-1]
+            p6 = img[x-1,y]
+            p1 = (1-k) * (1-l) * img[x,y] \
+                 + (1-k) * l * img[x+1,y] \
+                 + k * (1-l) * img[x, y+1] \
+                 + k * l * img[x+1, y+1]
+            p3 = (1-k) * (1-l) * img[x,y] \
+                 + (1-k) * l * img[x,y-1] \
+                 + k * (1-l) * img[x+1, y] \
+                 + k * l * img[x+1, y-1]
+            p5 = (1-k) * (1-l) * img[x,y] \
+                 + (1-k) * l * img[x-1,y] \
+                 + k * (1-l) * img[x, y-1] \
+                 + k * l * img[x-1, y-1]
+            p7 = (1-k) * (1-l) * img[x,y] \
+                 + (1-k) * l * img[x,y+1] \
+                 + k * (1-l) * img[x-1, y] \
+                 + k * l * img[x-1, y+1]
+
+            p0 = 1 if p0 >= img[x,y] else 0
+            p1 = 1 if p1 >= img[x,y] else 0
+            p2 = 1 if p2 >= img[x,y] else 0
+            p3 = 1 if p3 >= img[x,y] else 0
+            p4 = 1 if p4 >= img[x,y] else 0
+            p5 = 1 if p5 >= img[x,y] else 0
+            p6 = 1 if p6 >= img[x,y] else 0
+            p7 = 1 if p7 >= img[x,y] else 0
+
+            pattern = [p0, p1, p2, p3, p4, p5, p6, p7]
+
+            bv = BitVector(bitlist=pattern)
+            intvals_for_circular_shifts = [int(bv << 1) for _ in range(8)]
+            minbv = BitVector(intVal=min(intvals_for_circular_shifts), size=8)
+
+            bvruns = minbv.runs()
+            encoding = None
+            if len(bvruns) > 2:
+                lbp_hist[9] += 1
+            elif len(bvruns) == 1 and bvruns[0][0] == '1':
+                lbp_hist[8] += 1
+            elif len(bvruns) == 1 and bvruns[0][0] == '0':
+                lbp_hist[0] += 1
+            else:
+                lbp_hist[len(bvruns[1])] += 1
+
+    return lbp_hist
+
