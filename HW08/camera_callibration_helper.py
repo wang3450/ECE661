@@ -9,7 +9,7 @@ Purpose: given directory path, load images and labels"""
 def loadImages(dir_path):
     raw_img_list = list()
     grey_img_list = list()
-    for filename in os.listdir(dir_path):
+    for filename in sorted(os.listdir(dir_path)):
         filepath = os.path.join(dir_path, filename)
         if os.path.isfile(filepath) and ('.jpg' in filepath or '.jpeg' in filepath):
             raw_img = cv2.imread(filepath)
@@ -41,3 +41,20 @@ def performHoughTransform(edge_img_list):
         line = cv2.HoughLines(img, 1, np.pi/180, 52)
         hough_lines_list.append(line)
     return hough_lines_list
+
+
+"""get_Horizontal_Vert_Lines(lines)
+Input: Hough lines for a single image as a list
+Output: list of hor and vert lines
+Purpose: separate hor and vert hough lines"""
+def get_Horizontal_Vert_Lines(lines):
+    h_lines = list()
+    v_lines = list()
+    for l in lines:
+        for rho, theta in l:
+            theta += -np.pi/2
+            if np.abs(theta) < np.pi/4:
+                h_lines.append(l)
+            else:
+                v_lines.append(l)
+    return h_lines, v_lines
