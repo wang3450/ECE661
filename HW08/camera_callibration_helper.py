@@ -2,13 +2,12 @@ import os
 import cv2
 import numpy as np
 from sklearn.cluster import KMeans
+import sys
 
 """loadImages(dir_path)
 Input: directory path
 Output: list of grey scale images and labels
 Purpose: given directory path, load images and labels"""
-
-
 def loadImages(dir_path):
     raw_img_list = list()
     grey_img_list = list()
@@ -28,8 +27,6 @@ def loadImages(dir_path):
 Input: list of grey-scale images
 Output: list of canny edge maps
 Purpose: Given a list of grey scale images, apply canny on them"""
-
-
 def performCanny(grey_img_list):
     edge_img_list = list()
     for img in grey_img_list:
@@ -42,8 +39,6 @@ def performCanny(grey_img_list):
 Input: list of edge maps
 Output: list of hough lines
 Purpose: Given a list of edge maps, return a list of hough lines"""
-
-
 def performHoughTransform(edge_img_list):
     hough_lines_list = list()
     for img in edge_img_list:
@@ -56,8 +51,6 @@ def performHoughTransform(edge_img_list):
 Input: Hough lines for a single image as a list
 Output: list of hor and vert lines
 Purpose: separate hor and vert hough lines"""
-
-
 def get_Horizontal_Vert_Lines(lines):
     h_lines = list()
     v_lines = list()
@@ -75,8 +68,6 @@ def get_Horizontal_Vert_Lines(lines):
 Input: horizontal and vertical lines as ndarrays
 Output: list of 80 corners
 Purpose: Given horizontal and vertical hough lines, find the corners"""
-
-
 def getCorners(v_lines, h_lines):
     """y-intercept = horizontal line cross y-axis"""
     x_intercept = list()
@@ -104,9 +95,10 @@ def getCorners(v_lines, h_lines):
     for i in range(10):
         h_clustered_lines.append(list(np.mean(h_lines[kmeans_h_lines.labels_ == i], axis=0)))
 
-    v_lines_sorted = sorted(v_clustered_lines, key=lambda x: np.abs(x[0] / x[1]))
-    h_lines_sorted = sorted(h_clustered_lines, key=lambda x: np.abs(x[0] / x[1]))
-    return v_clustered_lines, h_clustered_lines
+    v_lines_sorted = sorted(v_clustered_lines, key=lambda x: np.abs(x[0] / np.cos(x[1])))
+    h_lines_sorted = sorted(h_clustered_lines, key=lambda x: np.abs(x[0] / np.sin(x[1])))
+
+
     corner_points = list()
     for v_line in v_lines_sorted:
         v_rho, v_theta = v_line
@@ -117,10 +109,18 @@ def getCorners(v_lines, h_lines):
             h_HC = np.array([np.cos(h_theta), np.sin(h_theta), -h_rho])
             h_HC = h_HC / h_HC[-1]
             point = np.cross(h_HC, v_HC)
-            print(f'v_HC: {v_HC}')
-            print(f'h_HC: {h_HC}')
-            print(f'point: {point}')
+            # print(f'v_HC: {v_HC}')
+            # print(f'h_HC: {h_HC}')
+            # print(f'point: {point}')
             print('\n')
+            if point[-1] == 0:
+                continue
             point = point / point[-1]
             corner_points.append(tuple(point[:2].astype('int')))
     return corner_points
+
+
+
+
+
+
