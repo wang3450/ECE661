@@ -120,6 +120,49 @@ def getCorners(v_lines, h_lines):
     return corner_points
 
 
+'''get_Ab(r2_points, projected_points)
+Input: world points, corners as lists
+Output: A, b matrices
+Purpose: Given x and x' determne a and b'''
+def get_Ab(r2_points, projected_points):
+    A = list()
+    for i,j in zip(r2_points, projected_points):
+        r1 = i + [1] + [0, 0, 0] + [-i[0] * j[0], -i[1] * j[0]]
+        r2 = [0, 0, 0] + i + [1] + [-i[0] * j[1], -i[1] * j[1]]
+        A.append([r1, r2])
+    b = np.array(projected_points).reshape(-1, 1)
+    return np.array(A).reshape(-1, 8), b
+
+
+'''get_H(world_points, corners)
+Input: x and x'
+Output: h
+Purpose: Given x and x', find h'''
+def get_H(world_points, corners):
+    A, b = get_Ab(world_points, corners)
+    H = list(np.linalg.solve(A.T @ A, A.T @ b).reshape(-1))
+    H.append(1)
+    return np.array(H).reshape(3, 3)
+
+
+'''get_V(i,j,h)
+Input: index i, j and homography h
+Output: 6x1 matrix
+Purpose: Given i, j, h, compute Vij'''
+def get_V(i, j, h):
+    v = np.zeros((6,1))
+    i -= 1
+    j -= 1
+
+    v[0][0] = h[0][i] * h[0][j]
+    v[1][0] = (h[0][i] * h[1][j]) + (h[1][i] * h[0][j])
+    v[2][0] = h[1][i] * h[1][j]
+    v[3][0] = (h[2][i] * h[0][j]) + (h[0][i] * h[2][j])
+    v[4][0] = (h[2][i] * h[1][j]) + (h[1][i] * h[2][j])
+    v[5][0] = h[2][i] * h[2][j]
+
+    return v
+
 
 
 
