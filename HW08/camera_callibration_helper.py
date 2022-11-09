@@ -164,6 +164,47 @@ def get_V(i, j, h):
     return v
 
 
+def ReprojectPoints(img,world_coord,Corners,K,R,t):
+    """
+    Input: img: colored image
+           world_coord: list of list of coordinates [[x1,y1],[x2,y2],...]
+           corners: list of list of original coordinates of corners [[x1,y1],[x2,y2],...]
+           K: Intrinsic parameter matrix 3x3
+           R: Rotation matrix for this image 3x3
+           t: translation vector for this image 3x1
+    Output: rep_img: img with reprojected points color image
+            mean_e mean of error using Euclidean distance
+            var_e: variance of error using Euclidena distance
+    """
+    # convert world_coord to HC
+    X_hc= np.ones((len(world_coord),3))
+    X_hc[:,:-1]=np.array(world_coord)
+    X_hc=X_hc.T # hc coordinates as col vectors
+    # make camera projection matrix P
+    P= np.concatenate((R[:,:2],t), axis=1)
+
+    P=K@P
+    #find reprojected points
+    rep_pt_hc= P@X_hc
+    # convert to physical coordinates for plotting
+
+    rep_pt_hc = rep_pt_hc / rep_pt_hc[-1]
+    rep_pt= rep_pt_hc[0:2]# physical coordinates as col vectors
+    # find Euclidean distance error, mean and var
+
+    e=np.array(Corners).T-rep_pt
+    e=np.linalg.norm(e,axis=0)
+    mean_e=np.mean(e)
+    var_e=np.var(e)
+    # plot corners on image
+    rep_img=np.copy(img)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    for i in range(len(world_coord)):
+        rep_img=cv2.circle(img,(int(rep_pt[0,i]),int(rep_pt[1,i])),2,(0,255,0),-1)
+        rep_img=cv2.circle(img,(int(Corners[i][0]),int(Corners[i][1])),2,(0,0,255),-1)
+        rep_img=cv2.putText(img,str(i),(int(rep_pt[0,i]),int(rep_pt[1,i])), font,0.5,(255,0,0),1,cv2.LINE_AA)
+    return(rep_img,mean_e,var_e)
+
 
 
 
