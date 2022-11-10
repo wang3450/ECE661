@@ -47,6 +47,26 @@ def performHoughTransform(edge_img_list):
     return hough_lines_list
 
 
+'''draw_hough_lines(line, img)
+Input: line (list), img (np.ndarray)
+Output: img (np.ndarray)
+Purpose: Given a list of hough lines, draw them'''
+def draw_hough_lines(line,img):
+    for l in line:
+        for rho, theta in l:
+            L = 1000
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + L * (-b))
+            y1 = int(y0 + L * (a))
+            x2 = int(x0 - L * (-b))
+            y2 = int(y0 - L * (a))
+            cv2.line(img, (x1,y1), (x2,y2), (0,0,255), 2)
+    return img
+
+
 """get_Horizontal_Vert_Lines(lines)
 Input: Hough lines for a single image as a list
 Output: list of hor and vert lines
@@ -206,5 +226,105 @@ def ReprojectPoints(img,world_coord,Corners,K,R,t):
     return(rep_img,mean_e,var_e)
 
 
+'''get_extrinsic(k,h)
+Input: k: 3x3, h: 3x3
+Output: R: 3x3, t: 3x1
+Purpose: Given h and k (intrinsic/homo) compute extrinsic'''
+def get_extrinsic(k, h):
+    zeta = 1 / np.linalg.norm(np.linalg.inv(k) @ h[:,0])
 
+    r1 = zeta * np.linalg.inv(k) @ h[:,0]
+    r2 = zeta * np.linalg.inv(k) @ h[:,1]
+    r3 = zeta * np.cross(r1,r2)
+    t = zeta * np.linalg.inv(k) @ h[:,2]
+
+    r1 = np.reshape(r1, (3,1))
+    r2 = np.reshape(r2, (3,1))
+    r3 = np.reshape(r3, (3,1))
+    t = np.reshape(t, (3,1))
+
+    R = np.hstack((r1,r2))
+    R = np.hstack((R, r3))
+    R = np.reshape(R, (3,3))
+
+    u, _, vh = np.linalg.svd(R)
+
+    R = u @ vh
+
+    return R, t
+
+
+'''rotation2rod(R)
+Input: 3x3 R rotation
+Output: 3 vector rodriguez matrix
+Purpose: Convert 9 dof to 3 dof rep of rotation matrix'''
+def rotation2rod(R):
+    """
+    Input: R: Rotation matrix, format 3x3 np.array
+    Output: w: size 3 vector, format np.array [wx,wy,wz]
+    """
+    phi=np.arccos((np.trace(R)-1)/2)
+    w=(phi/(2*np.sin(phi)))*np.array([(R[2,1]-R[1,2]),
+                                      (R[0,2]-R[2,0]),
+                                      (R[1,0]-R[0,1])])
+    return(-w)
+
+
+'''rod2rotation(w)
+Input: 3 vector rodriguez matrix
+Output: 3x3 R rotation
+Purpose: Convert from 3 dof rep to 9 dof Rep'''
+def rod2rotation(w):
+    """
+    Input: w: col vector of size 3: three parameters of rotation [wx,wy,wz]
+    Output: R: np.array of size 3x3: The rotation matrix
+    Using Rodriguez Rotation Formula
+    """
+    # make Wx from w
+    Wx=np.array([[0,-1*w[2],w[1]],
+                [w[2],0,-1*w[0]],
+                [-1*w[1],w[0],0]])
+    phi=np.linalg.norm(w)
+    R=np.eye(3) + (np.sin(phi)/phi)*(Wx) + ((1-np.cos(phi))/phi**2)*(Wx@Wx)
+    return(R)
+
+
+'''cost_function_no_rad(p,x,x_m)
+Input: p = [K,w1,t1,w2,t2,...wn,tn]
+       x: list of list of corners for all images
+       x_m: list of real world coordinates
+Output: sum of square errors (scalar)
+Purpose: cost function with no radial distortion'''
+def cost_function_no_rad(p,x,x_m):
+    # make K: intrinsic matrix
+    a_x=p[0]; a_y=p[1]; s=p[2]
+    x0=p[3]; y0=p[4]
+    K=np.array([[a_x,s,x0],
+                [0,a_y,y0],
+                [0,0,1]])
+
+    # print(f'K: {K}')
+    # make Rotation matrices R
+    num_img=int((len(p)-5)/6)
+    # double loop for finding dgeom**2
+    N=len(x_m)
+    cost=np.zeros(2*num_img*N)
+    for i in range(num_img):
+        iw=p[6*i+5:6*i+8]
+        it=p[6*i+8:6*i+11]
+        iR=rod2rotation(iw)
+        est_map=np.array([iR[:,0].T,iR[:,1].T,it.T])
+        # print(f'estmap: {est_map}')
+        est_map=K@(est_map.T) # mapping function for finding estimate
+        # print(f'krt: {est_map}')
+        xij=np.array(x[i]); xij=xij.T # coordinates as col vectors
+        x_m_hc=np.ones((len(x_m),3)); x_m_hc[:,:-1]=np.array(x_m)
+        x_m_hc=x_m_hc.T # coordinates as col vectors
+        # find estimate using pinhole model
+        x_hat_hc=est_map@x_m_hc #estimate
+        x_hat=np.linalg.inv(np.diag(x_hat_hc[-1,:]))@x_hat_hc.T
+        x_hat=x_hat.T; x_hat=x_hat[:-1,:] # physical coordinate
+        temp= xij-x_hat
+        cost[i*2*N:(i+1)*2*N]=np.hstack((temp[0,:],temp[1,:]))
+    return cost
 
