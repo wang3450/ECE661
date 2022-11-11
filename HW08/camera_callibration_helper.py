@@ -51,7 +51,7 @@ def performHoughTransform(edge_img_list):
 Input: line (list), img (np.ndarray)
 Output: img (np.ndarray)
 Purpose: Given a list of hough lines, draw them'''
-def draw_hough_lines(line,img):
+def draw_hough_lines(line, img):
     for l in line:
         for rho, theta in l:
             L = 1000
@@ -63,7 +63,7 @@ def draw_hough_lines(line,img):
             y1 = int(y0 + L * (a))
             x2 = int(x0 - L * (-b))
             y2 = int(y0 - L * (a))
-            cv2.line(img, (x1,y1), (x2,y2), (0,0,255), 2)
+            cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
     return img
 
 
@@ -118,7 +118,6 @@ def getCorners(v_lines, h_lines):
     v_lines_sorted = sorted(v_clustered_lines, key=lambda x: np.abs(x[0] / np.cos(x[1])))
     h_lines_sorted = sorted(h_clustered_lines, key=lambda x: np.abs(x[0] / np.sin(x[1])))
 
-
     corner_points = list()
     for v_line in v_lines_sorted:
         v_rho, v_theta = v_line
@@ -146,7 +145,7 @@ Output: A, b matrices
 Purpose: Given x and x' determne a and b'''
 def get_Ab(r2_points, projected_points):
     A = list()
-    for i,j in zip(r2_points, projected_points):
+    for i, j in zip(r2_points, projected_points):
         r1 = i + [1] + [0, 0, 0] + [-i[0] * j[0], -i[1] * j[0]]
         r2 = [0, 0, 0] + i + [1] + [-i[0] * j[1], -i[1] * j[1]]
         A.append([r1, r2])
@@ -170,7 +169,7 @@ Input: index i, j and homography h
 Output: 6x1 matrix
 Purpose: Given i, j, h, compute Vij'''
 def get_V(i, j, h):
-    v = np.zeros((6,1))
+    v = np.zeros((6, 1))
     i -= 1
     j -= 1
 
@@ -184,46 +183,38 @@ def get_V(i, j, h):
     return v
 
 
-def ReprojectPoints(img,world_coord,Corners,K,R,t):
-    """
-    Input: img: colored image
-           world_coord: list of list of coordinates [[x1,y1],[x2,y2],...]
-           corners: list of list of original coordinates of corners [[x1,y1],[x2,y2],...]
-           K: Intrinsic parameter matrix 3x3
-           R: Rotation matrix for this image 3x3
-           t: translation vector for this image 3x1
-    Output: rep_img: img with reprojected points color image
-            mean_e mean of error using Euclidean distance
-            var_e: variance of error using Euclidena distance
-    """
-    # convert world_coord to HC
-    X_hc= np.ones((len(world_coord),3))
-    X_hc[:,:-1]=np.array(world_coord)
-    X_hc=X_hc.T # hc coordinates as col vectors
-    # make camera projection matrix P
-    P= np.concatenate((R[:,:2],t), axis=1)
-
-    P=K@P
-    #find reprojected points
-    rep_pt_hc= P@X_hc
-    # convert to physical coordinates for plotting
+'''ReprojectPoints(img, world_coord, corner, k, r, t)
+Input: img: raw colored image
+       world_cord: list of world coords
+       corners: list of identified corners
+       k: intrinsic parameters
+       r: rotation matrix
+       t: translation vector
+Output: img with points, mean error, var error
+Purpose: Reproject world coords onto img'''
+def ReprojectPoints(img, world_coord, Corners, K, R, t):
+    X_hc = np.ones((len(world_coord), 3))
+    X_hc[:, :-1] = np.array(world_coord)
+    X_hc = X_hc.T
+    P = np.concatenate((R[:, :2], t), axis=1)
+    P = K @ P
+    rep_pt_hc = P @ X_hc
 
     rep_pt_hc = rep_pt_hc / rep_pt_hc[-1]
-    rep_pt= rep_pt_hc[0:2]# physical coordinates as col vectors
-    # find Euclidean distance error, mean and var
+    rep_pt = rep_pt_hc[0:2]
+    e = np.array(Corners).T - rep_pt
+    e = np.linalg.norm(e, axis=0)
+    mean_e = np.mean(e)
+    var_e = np.var(e)
 
-    e=np.array(Corners).T-rep_pt
-    e=np.linalg.norm(e,axis=0)
-    mean_e=np.mean(e)
-    var_e=np.var(e)
-    # plot corners on image
-    rep_img=np.copy(img)
+    rep_img = np.copy(img)
     font = cv2.FONT_HERSHEY_SIMPLEX
     for i in range(len(world_coord)):
-        rep_img=cv2.circle(img,(int(rep_pt[0,i]),int(rep_pt[1,i])),2,(0,255,0),-1)
-        rep_img=cv2.circle(img,(int(Corners[i][0]),int(Corners[i][1])),2,(0,0,255),-1)
-        rep_img=cv2.putText(img,str(i),(int(rep_pt[0,i]),int(rep_pt[1,i])), font,0.5,(255,0,0),1,cv2.LINE_AA)
-    return(rep_img,mean_e,var_e)
+        rep_img = cv2.circle(img, (int(rep_pt[0, i]), int(rep_pt[1, i])), 2, (0, 255, 0), -1)
+        rep_img = cv2.circle(img, (int(Corners[i][0]), int(Corners[i][1])), 2, (0, 0, 255), -1)
+        rep_img = cv2.putText(img, str(i), (int(rep_pt[0, i]), int(rep_pt[1, i])), font, 0.5, (255, 0, 0), 1,
+                              cv2.LINE_AA)
+    return rep_img, mean_e, var_e
 
 
 '''get_extrinsic(k,h)
@@ -231,21 +222,21 @@ Input: k: 3x3, h: 3x3
 Output: R: 3x3, t: 3x1
 Purpose: Given h and k (intrinsic/homo) compute extrinsic'''
 def get_extrinsic(k, h):
-    zeta = 1 / np.linalg.norm(np.linalg.inv(k) @ h[:,0])
+    zeta = 1 / np.linalg.norm(np.linalg.inv(k) @ h[:, 0])
 
-    r1 = zeta * np.linalg.inv(k) @ h[:,0]
-    r2 = zeta * np.linalg.inv(k) @ h[:,1]
-    r3 = zeta * np.cross(r1,r2)
-    t = zeta * np.linalg.inv(k) @ h[:,2]
+    r1 = zeta * np.linalg.inv(k) @ h[:, 0]
+    r2 = zeta * np.linalg.inv(k) @ h[:, 1]
+    r3 = zeta * np.cross(r1, r2)
+    t = zeta * np.linalg.inv(k) @ h[:, 2]
 
-    r1 = np.reshape(r1, (3,1))
-    r2 = np.reshape(r2, (3,1))
-    r3 = np.reshape(r3, (3,1))
-    t = np.reshape(t, (3,1))
+    r1 = np.reshape(r1, (3, 1))
+    r2 = np.reshape(r2, (3, 1))
+    r3 = np.reshape(r3, (3, 1))
+    t = np.reshape(t, (3, 1))
 
-    R = np.hstack((r1,r2))
+    R = np.hstack((r1, r2))
     R = np.hstack((R, r3))
-    R = np.reshape(R, (3,3))
+    R = np.reshape(R, (3, 3))
 
     u, _, vh = np.linalg.svd(R)
 
@@ -259,15 +250,11 @@ Input: 3x3 R rotation
 Output: 3 vector rodriguez matrix
 Purpose: Convert 9 dof to 3 dof rep of rotation matrix'''
 def rotation2rod(R):
-    """
-    Input: R: Rotation matrix, format 3x3 np.array
-    Output: w: size 3 vector, format np.array [wx,wy,wz]
-    """
-    phi=np.arccos((np.trace(R)-1)/2)
-    w=(phi/(2*np.sin(phi)))*np.array([(R[2,1]-R[1,2]),
-                                      (R[0,2]-R[2,0]),
-                                      (R[1,0]-R[0,1])])
-    return(-w)
+    phi = np.arccos((np.trace(R) - 1) / 2)
+    w = (phi / (2 * np.sin(phi))) * np.array([(R[2, 1] - R[1, 2]),
+                                              (R[0, 2] - R[2, 0]),
+                                              (R[1, 0] - R[0, 1])])
+    return (-w)
 
 
 '''rod2rotation(w)
@@ -275,18 +262,13 @@ Input: 3 vector rodriguez matrix
 Output: 3x3 R rotation
 Purpose: Convert from 3 dof rep to 9 dof Rep'''
 def rod2rotation(w):
-    """
-    Input: w: col vector of size 3: three parameters of rotation [wx,wy,wz]
-    Output: R: np.array of size 3x3: The rotation matrix
-    Using Rodriguez Rotation Formula
-    """
     # make Wx from w
-    Wx=np.array([[0,-1*w[2],w[1]],
-                [w[2],0,-1*w[0]],
-                [-1*w[1],w[0],0]])
-    phi=np.linalg.norm(w)
-    R=np.eye(3) + (np.sin(phi)/phi)*(Wx) + ((1-np.cos(phi))/phi**2)*(Wx@Wx)
-    return(R)
+    Wx = np.array([[0, -1 * w[2], w[1]],
+                   [w[2], 0, -1 * w[0]],
+                   [-1 * w[1], w[0], 0]])
+    phi = np.linalg.norm(w)
+    R = np.eye(3) + (np.sin(phi) / phi) * (Wx) + ((1 - np.cos(phi)) / phi ** 2) * (Wx @ Wx)
+    return (R)
 
 
 '''cost_function_no_rad(p,x,x_m)
@@ -295,36 +277,80 @@ Input: p = [K,w1,t1,w2,t2,...wn,tn]
        x_m: list of real world coordinates
 Output: sum of square errors (scalar)
 Purpose: cost function with no radial distortion'''
-def cost_function_no_rad(p,x,x_m):
+def cost_function_no_rad(p, x, x_m):
     # make K: intrinsic matrix
-    a_x=p[0]; a_y=p[1]; s=p[2]
-    x0=p[3]; y0=p[4]
-    K=np.array([[a_x,s,x0],
-                [0,a_y,y0],
-                [0,0,1]])
+    a_x = p[0];
+    a_y = p[1];
+    s = p[2]
+    x0 = p[3];
+    y0 = p[4]
+    K = np.array([[a_x, s, x0],
+                  [0, a_y, y0],
+                  [0, 0, 1]])
 
-    # print(f'K: {K}')
-    # make Rotation matrices R
-    num_img=int((len(p)-5)/6)
-    # double loop for finding dgeom**2
-    N=len(x_m)
-    cost=np.zeros(2*num_img*N)
+    num_img = int((len(p) - 5) / 6)
+    N = len(x_m)
+    cost = np.zeros(2 * num_img * N)
     for i in range(num_img):
-        iw=p[6*i+5:6*i+8]
-        it=p[6*i+8:6*i+11]
-        iR=rod2rotation(iw)
-        est_map=np.array([iR[:,0].T,iR[:,1].T,it.T])
-        # print(f'estmap: {est_map}')
-        est_map=K@(est_map.T) # mapping function for finding estimate
-        # print(f'krt: {est_map}')
-        xij=np.array(x[i]); xij=xij.T # coordinates as col vectors
-        x_m_hc=np.ones((len(x_m),3)); x_m_hc[:,:-1]=np.array(x_m)
-        x_m_hc=x_m_hc.T # coordinates as col vectors
-        # find estimate using pinhole model
-        x_hat_hc=est_map@x_m_hc #estimate
-        x_hat=np.linalg.inv(np.diag(x_hat_hc[-1,:]))@x_hat_hc.T
-        x_hat=x_hat.T; x_hat=x_hat[:-1,:] # physical coordinate
-        temp= xij-x_hat
-        cost[i*2*N:(i+1)*2*N]=np.hstack((temp[0,:],temp[1,:]))
+        iw = p[6 * i + 5:6 * i + 8]
+        it = p[6 * i + 8:6 * i + 11]
+        iR = rod2rotation(iw)
+        est_map = np.array([iR[:, 0].T, iR[:, 1].T, it.T])
+        est_map = K @ (est_map.T)
+        xij = np.array(x[i]);
+        xij = xij.T
+        x_m_hc = np.ones((len(x_m), 3));
+        x_m_hc[:, :-1] = np.array(x_m)
+        x_m_hc = x_m_hc.T
+        x_hat_hc = est_map @ x_m_hc
+        x_hat = np.linalg.inv(np.diag(x_hat_hc[-1, :])) @ x_hat_hc.T
+        x_hat = x_hat.T
+        x_hat = x_hat[:-1, :]
+        temp = xij - x_hat
+        cost[i * 2 * N:(i + 1) * 2 * N] = np.hstack((temp[0, :], temp[1, :]))
     return cost
 
+
+'''cost_function_yes_rad
+Input: p = [K,w1,t1,w2,t2,...wn,tn, k1,k2]
+       x: list of list of corners for all images
+       x_m: list of real world coordinates
+Output: sum of square errors (scalar)
+Purpose: cost function with radial distortion'''
+def cost_function_yes_rad(p, x, x_m):
+    a_x = p[0];
+    a_y = p[1];
+    s = p[2]
+    x0 = p[3];
+    y0 = p[4];
+    k1 = p[-2];
+    k2 = p[-1]
+    K = np.array([[a_x, s, x0],
+                  [0, a_y, y0],
+                  [0, 0, 1]])
+    num_img = int((len(p) - 7) / 6)
+    N = len(x_m)
+    cost = np.zeros(2 * num_img * N)
+    for i in range(num_img):
+        iw = p[6 * i + 5:6 * i + 8]
+        it = p[6 * i + 8:6 * i + 11]
+        iR = rod2rotation(iw)
+        est_map = np.array([iR[:, 0].T, iR[:, 1].T, it.T])
+        est_map = K @ est_map.T
+        xij = np.array(x[i])
+        xij = xij.T
+        x_m_hc = np.ones((len(x_m), 3));
+        x_m_hc[:, :-1] = np.array(x_m)
+        x_m_hc = x_m_hc.T
+        x_hat_hc = est_map @ x_m_hc
+        x_hat = np.linalg.inv(np.diag(x_hat_hc[-1, :])) @ x_hat_hc.T
+        x_hat = x_hat.T
+        x_hat = x_hat[:-1, :]
+        diff = x_hat - (np.kron(np.array([x0, y0]), np.ones((N, 1)))).T
+        r_2 = np.sum(np.square(diff), axis=0)
+        m = k1 * r_2 + k2 * np.square(r_2)
+        m = np.vstack((m, m))
+        x_hat_rad = x_hat + np.multiply(m, diff)
+        temp = xij - x_hat_rad
+        cost[i * 2 * N:(i + 1) * 2 * N] = np.hstack((temp[0, :], temp[1, :]))
+    return cost
