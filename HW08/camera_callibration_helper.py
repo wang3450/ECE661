@@ -30,7 +30,7 @@ Purpose: Given a list of grey scale images, apply canny on them"""
 def performCanny(grey_img_list):
     edge_img_list = list()
     for img in grey_img_list:
-        edge = cv2.Canny(img, 300, 300)
+        edge = cv2.Canny(img, 450, 450)
         edge_img_list.append(edge)
     return edge_img_list
 
@@ -42,7 +42,7 @@ Purpose: Given a list of edge maps, return a list of hough lines"""
 def performHoughTransform(edge_img_list):
     hough_lines_list = list()
     for img in edge_img_list:
-        line = cv2.HoughLines(img, 1, np.pi / 180, 52)
+        line = cv2.HoughLines(img, 1, np.pi / 180, 60)
         hough_lines_list.append(line)
     return hough_lines_list
 
