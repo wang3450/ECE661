@@ -13,6 +13,7 @@ def getDistance(x_prime, computed_x_prime):
     distance = np.sqrt((x1 - x_prime1) ** 2 + (x2 - x_prime2) ** 2)
     return distance
 
+
 '''mat_mul(T, x)
 Input: T (3x3 ndarray), x (list 2)
 Output: list[x1/x3, x2/x3]
@@ -24,6 +25,7 @@ def T_mul(T:np.ndarray, x:list):
     x_hat = T@temp
     assert(x_hat.shape == (3,1))
     return [float(x_hat[0] / x_hat[2]), float(x_hat[1] / x_hat[2])]
+
 
 '''compute_F(x, x_prime)
 Input: list of x and x_prime points
@@ -74,4 +76,65 @@ def compute_F(x, x_prime):
 
     '''denormalize f_prime_hat into f'''
     f = T_prime.T@f_prime_hat@T
-    return f
+    return f/f[-1,-1]
+
+
+'''compute_e(F)
+Input: F (3x3 ndarray)
+Output: e, e'
+Purpose: Given F, compute epipoles'''
+def compute_e(F:np.ndarray):
+    u, _, vh = np.linalg.svd(F)
+    e = np.transpose(vh[-1,:])
+    e_prime = u[:, -1]
+    e = e / e[2]
+    e_prime = e_prime / e_prime[2]
+    return e, e_prime
+
+
+'''compute_P(e_prime, F)
+Input: e_prime (3,) ndarray
+       F (3,3) ndarray
+Output: P, Prime (3,4) ndarray
+Purpose: Estimate the Projection Matrices'''
+def compute_P(e_prime, F):
+    P = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]])
+    e_prime_matrix = np.array([[0, -e_prime[2], e_prime[1]], [e_prime[2], 0, -e_prime[0]], [-e_prime[1], e_prime[0], 0]])
+    e_prime = np.reshape(e_prime, (3, 1))
+    P_prime = np.hstack((e_prime_matrix@F, e_prime))
+
+    assert(np.linalg.matrix_rank(P) == 3)
+    assert(np.linalg.matrix_rank(P_prime) == 3)
+
+    return P, P_prime
+
+
+'''triangulate(P, P_prrime, x_points, x_prime)
+Input: P (3x4 ndarray)
+       P' (3x4 ndarray)
+       x_points (list of points in left image)
+       x_prime (list of points in right image)
+Output: World point X in physical form (3 vector)
+Purpose: Given P, P', find world point of (x,x') '''
+def triangulate(P, P_prime, x_points, x_prime):
+    A = np.zeros((4,4))
+    ''' get the rows of p and p'''
+    p1 = P[0,:]
+    p2 = P[1,:]
+    p3 = P[2,:]
+    p_1_prime = P_prime[0,:]
+    p_2_prime = P_prime[1,:]
+    p_3_prime = P_prime[2:,]
+
+    '''populate the A matrix'''
+    A[0] = (x_points[0] * p3) - p1
+    A[1] = (x_points[1] * p3) - p2
+    A[2] = (x_prime[0] * p_3_prime) - p_1_prime
+    A[3] = (x_prime[1] * p_3_prime) - p_2_prime
+
+    '''X is smallest eigenvector of A^TA'''
+    _, _, vh = np.linalg.svd(A)
+    world_point = vh[-1]
+    world_point = world_point / world_point[-1]
+
+    return [float(world_point[0]), float(world_point[1]), float(world_point[2])]
