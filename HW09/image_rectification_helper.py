@@ -118,7 +118,7 @@ Output: World point X in physical form (3 vector)
 Purpose: Given P, P', find world point of (x,x') '''
 def triangulate(P, P_prime, x_points, x_prime):
     A = np.zeros((4,4))
-    ''' get the rows of p and p'''
+    ''' get the rows of p and p' '''
     p1 = P[0,:]
     p2 = P[1,:]
     p3 = P[2,:]
@@ -137,49 +137,21 @@ def triangulate(P, P_prime, x_points, x_prime):
     world_point = vh[-1]
     world_point = world_point / world_point[-1]
 
-    return [float(world_point[0]), float(world_point[1]), float(world_point[2])]
+    return [float(world_point[0]), float(world_point[1]), float(world_point[2]), float(world_point[3])]
 
 
 '''world2image(p,x)
 Input: p (3x4) projection matrix
-Output: len(x) = 3, world point
+Output: len(x) = 4, world point in HC
 Purpose: Project world point into image space'''
 def world2image(p, x):
-    temp = list(deepcopy(x))
-    temp.append(1)
-    temp = np.array(temp)
+    temp = np.array(x)
     temp = np.reshape(temp, (4,1))
     img_point = p@temp
     return [float(img_point[0]/img_point[2]), float(img_point[1] / img_point[2])]
 
 
-'''cost_function(params, x_points, x_prime_points)
-Input: params: list of parameters
-       x_points: [[x1,y1], ... [x8,y8]]
-       x_prime_points: [[x'1,y'1], ... [x'8,y'8]] 
-Output: d^2_geom
-Purpose: Cost Function for LM'''
-def cost_function(params, x_points, x_prime_points):
-    p = np.hstack((np.eye(3), np.zeros((3, 1))))
-    M = params[0:9]
-    M = np.reshape(M, (3,3))
-    t = params[9:12]
-    p_prime = np.zeros((3,4))
-    p_prime[:, :-1] = M
-    p_prime[:,-1] = t
 
-    world_points = list()
-    for i in range(len(x_points)):
-        world_points.append(params[12+3*i:12+3*(i+1)])
-
-    x_hat = [world2image(p, point) for point in world_points]
-    x_prime_hat = [world2image(p_prime, point) for point in world_points]
-
-    diff_x = np.subtract(x_points, x_hat)
-    diff_x_prime = np.subtract(x_prime_points, x_prime_hat)
-    cost = np.hstack((diff_x[:,0], diff_x[:,1], diff_x_prime[:,0], diff_x_prime[:,1]))
-    cost = np.hstack((cost, cost))
-    return cost
 
 def cross_rep_mat(w):
     """
