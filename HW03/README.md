@@ -1,4 +1,4 @@
-# Homework 2
+# Homework 3
 This directory consists of all the necessary files to complete homework 3. The assignment details are listed in HW3-Fall2022.pdf
 
 ## Solutions P2P Method
