@@ -38,7 +38,7 @@ def click_event(event, x, y, flags, params):
 # driver function
 if __name__ == "__main__":
     # reading the image
-    img = cv2.imread('/home/jo_wang/Desktop/ECE661/HW09/input_images/right.jpg', 1)
+    img = cv2.imread('/Users/wang3450/Desktop/ECE661/HW09/results/task1_results/lines_3d.png', 1)
 
     # displaying the image
     cv2.imshow('image', img)
