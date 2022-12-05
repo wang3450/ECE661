@@ -7,6 +7,7 @@ from PIL import Image
 from torch.autograd import Variable
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+from pca_lda_ae_helper import KNN
 
 
 class DataBuilder(Dataset):
@@ -131,12 +132,12 @@ def train(epoch):
 
 ##################################
 # Change these
-p = 3  # [3, 8, 16]
+p = 16  # [3, 8, 16]
 training = False
-TRAIN_DATA_PATH = 'path/to/train/set'
-EVAL_DATA_PATH = 'path/to/test/set'
-LOAD_PATH = f'path/to/model_{p}.pt'
-OUT_PATH = 'path/to/exp'
+TRAIN_DATA_PATH = '/Users/wang3450/Desktop/ECE661/HW10/FaceRecognition/train'
+EVAL_DATA_PATH = '/Users/wang3450/Desktop/ECE661/HW10/FaceRecognition/test'
+LOAD_PATH = f'/Users/wang3450/Desktop/ECE661/HW10/weights/model_{p}.pt'
+OUT_PATH = '/Users/wang3450/Desktop/ECE661/HW10/results/task2_results'
 ##################################
 
 model = Autoencoder(p)
@@ -168,9 +169,11 @@ else:
         mu, logvar = model.encode(data['x'])
         z = mu.detach().cpu().numpy().flatten()
         X_train.append(z)
-        X_train.append(data['y'].item())
-    X_train = np.stack(X_train)
+        y_train.append(data['y'].item())
+    X_train = np.array(X_train)
     y_train = np.array(y_train)
+    print(X_train.shape)
+    print(y_train.shape)
 
     testloader = DataLoader(
         dataset=DataBuilder(EVAL_DATA_PATH),
@@ -182,10 +185,15 @@ else:
         z = mu.detach().cpu().numpy().flatten()
         X_test.append(z)
         Y_test.append(data['y'].item())
-    X_test = np.stack(X_test)
+    X_test = np.array(X_test)
     Y_test = np.array(Y_test)
+    print(X_test.shape)
+    print(Y_test.shape)
 
     ##################################
     # Your code starts here
-    pass
+    knn = KNN(1)
+    knn.fit(X_train, y_train)
+    score = knn.score(X_test, Y_test)
+    print(score)
     ##################################

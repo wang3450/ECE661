@@ -101,3 +101,27 @@ def LDA(vec_train_image, vec_test_image, train_labels, test_labels):
         error = np.mean(pred != test_labels)
         accuracy_rate.append(1-error)
     return accuracy_rate
+
+'''i wrote this 100%'''
+class KNN:
+    def __init__(self, N_neigh=3) -> None:
+        self.K = N_neigh
+
+    def fit(self, X, Y):
+        self.train_X = X
+        self.train_Y = Y
+
+    def predict(self, X):
+        # X = np.array(X)
+        pred = []
+        for x in X:
+            args = np.argsort(np.sum((self.train_X - x) ** 2, axis=1))
+            # print(args[1:self.K+1])
+            label = np.bincount(self.train_Y[args[:self.K]]).argmax()
+            pred.append(label)
+        return pred
+
+    def score(self, X, Y):
+        pred = self.predict(X)
+        num_matches = sum(pred == Y)
+        return num_matches / len(pred)
