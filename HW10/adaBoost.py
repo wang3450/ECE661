@@ -114,7 +114,7 @@ class AdaBoost:
         height, width = image_shape
         features = []
         h = 1
-        for w in range(1, width + 1,10):
+        for w in range(1, width + 1, 1):
             # for h in range(1, height + 1):
             i = 0
             while i + w < width:
